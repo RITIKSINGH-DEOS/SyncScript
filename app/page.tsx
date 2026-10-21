@@ -5,8 +5,10 @@ import { FileDropzone } from "@/components/FileDropzone";
 import { IntervalTab } from "@/components/IntervalTab";
 import { MarkerTab } from "@/components/MarkerTab";
 import { ResultViewer } from "@/components/ResultViewer";
+import { ChunkingProgress } from "@/components/ChunkingProgress";
 import { FormattedTimestampBlock, ProcessingMode } from "@/types/transcription";
-import { Clock, Tag, Wand2, ShieldCheck } from "lucide-react";
+import { chunkAudioFile, AudioChunk } from "@/lib/audio-chunker";
+import { Clock, Tag, Wand2, ShieldCheck, Layers } from "lucide-react";
 
 export default function Home() {
   const [activeMode, setActiveMode] = useState<ProcessingMode>("interval");
@@ -14,87 +16,118 @@ export default function Home() {
   const [intervalSeconds, setIntervalSeconds] = useState<number>(5);
   const [markerSymbol, setMarkerSymbol] = useState<string>("|");
   const [scriptText, setScriptText] = useState<string>("");
+  
+  // Pipeline & Chunking State
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const [chunkProgress, setChunkProgress] = useState<number>(0);
+  const [chunkStatus, setChunkStatus] = useState<string>("");
+  const [preparedChunks, setPreparedChunks] = useState<AudioChunk[]>([]);
+  
+  // Result State
   const [resultBlocks, setResultBlocks] = useState<FormattedTimestampBlock[]>([]);
   const [formattedOutput, setFormattedOutput] = useState<string>("");
 
-  // Phase 1 Interactive Demo Generator for UAT Testing
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (!selectedFile) {
       alert("Please upload an audio or video file first!");
       return;
     }
 
     setIsProcessing(true);
+    setChunkProgress(5);
+    setChunkStatus("Initiating Web Audio Pipeline...");
 
-    // Mock interactive generation for Phase 1 UI Shell UAT
-    setTimeout(() => {
+    try {
+      // Phase 2: Execute Client-Side Audio Chunking Engine
+      const chunks = await chunkAudioFile(selectedFile, 600, (percent, status) => {
+        setChunkProgress(percent);
+        setChunkStatus(status);
+      });
+
+      setPreparedChunks(chunks);
+
+      // Simulate Phase 2 chunk readiness with offset mapping
       let mockBlocks: FormattedTimestampBlock[] = [];
-      let outputText = "";
+      let totalIndex = 1;
 
-      if (activeMode === "interval") {
-        mockBlocks = [
-          {
-            index: 1,
-            startTime: "00:00",
-            endTime: `00:0${intervalSeconds}`,
-            startSeconds: 0,
-            endSeconds: intervalSeconds,
-            text: "Welcome to this episode where we explore ancient mysteries of the world.",
-          },
-          {
-            index: 2,
-            startTime: `00:0${intervalSeconds}`,
-            endTime: `00:${String(intervalSeconds * 2).padStart(2, "0")}`,
-            startSeconds: intervalSeconds,
-            endSeconds: intervalSeconds * 2,
-            text: "Deep in the forgotten desert, giant pyramids align with the constellations.",
-          },
-          {
-            index: 3,
-            startTime: `00:${String(intervalSeconds * 2).padStart(2, "0")}`,
-            endTime: `00:${String(intervalSeconds * 3).padStart(2, "0")}`,
-            startSeconds: intervalSeconds * 2,
-            endSeconds: intervalSeconds * 3,
-            text: "Archaeologists have recently discovered a chamber untouched for thousands of years.",
-          },
-        ];
-      } else {
-        const segments = scriptText
-          ? scriptText.split(markerSymbol).map((s) => s.trim()).filter(Boolean)
-          : [
-              "A brave knight approached the ancient citadel",
-              "Dragons circled the stormy crimson sky above",
-              "Drawing his enchanted blade, he stood ready for destiny",
-            ];
+      chunks.forEach((chunk) => {
+        const offset = chunk.startSeconds;
+        if (activeMode === "interval") {
+          const sampleLines = [
+            "Once upon a time in a misty ancient forest",
+            "A lone white wolf stood at the edge of the cliff",
+            "Watching the aurora borealis illuminate the arctic sky",
+          ];
 
-        mockBlocks = segments.map((seg, idx) => {
-          const start = idx * 6;
-          const end = (idx + 1) * 6;
-          return {
-            index: idx + 1,
-            startTime: `00:${String(start).padStart(2, "0")}`,
-            endTime: `00:${String(end).padStart(2, "0")}`,
-            startSeconds: start,
-            endSeconds: end,
-            text: seg,
-          };
-        });
-      }
+          sampleLines.forEach((line, i) => {
+            const startSec = offset + i * intervalSeconds;
+            const endSec = offset + (i + 1) * intervalSeconds;
 
-      outputText = mockBlocks
+            const formatTime = (s: number) => {
+              const m = Math.floor(s / 60);
+              const sec = Math.floor(s % 60);
+              return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+            };
+
+            mockBlocks.push({
+              index: totalIndex++,
+              startTime: formatTime(startSec),
+              endTime: formatTime(endSec),
+              startSeconds: startSec,
+              endSeconds: endSec,
+              text: line,
+            });
+          });
+        } else {
+          const segments = scriptText
+            ? scriptText.split(markerSymbol).map((s) => s.trim()).filter(Boolean)
+            : [
+                "A brave knight approached the ancient citadel",
+                "Dragons circled the stormy crimson sky above",
+                "Drawing his enchanted blade, he stood ready for destiny",
+              ];
+
+          segments.forEach((seg, idx) => {
+            const startSec = offset + idx * 6;
+            const endSec = offset + (idx + 1) * 6;
+            const formatTime = (s: number) => {
+              const m = Math.floor(s / 60);
+              const sec = Math.floor(s % 60);
+              return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+            };
+
+            mockBlocks.push({
+              index: totalIndex++,
+              startTime: formatTime(startSec),
+              endTime: formatTime(endSec),
+              startSeconds: startSec,
+              endSeconds: endSec,
+              text: seg,
+            });
+          });
+        }
+      });
+
+      const outputText = mockBlocks
         .map((b) => `[${b.startTime} - ${b.endTime}] ${b.text}`)
         .join("\n");
 
       setResultBlocks(mockBlocks);
       setFormattedOutput(outputText);
+    } catch (err) {
+      console.error("Audio processing failed:", err);
+      alert("Failed to decode audio. Please ensure the file is a valid media format.");
+    } finally {
       setIsProcessing(false);
-    }, 600);
+    }
   };
 
   const handleClear = () => {
     setResultBlocks([]);
     setFormattedOutput("");
+    setPreparedChunks([]);
+    setChunkProgress(0);
+    setChunkStatus("");
   };
 
   return (
@@ -104,7 +137,7 @@ export default function Home() {
         <header className="text-center space-y-3">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
             <ShieldCheck className="w-3.5 h-3.5" />
-            <span>MNC Enterprise Architecture • 100% Free & Unlimited</span>
+            <span>MNC Enterprise Architecture • Client Audio Chunking Engine Ready</span>
           </div>
           <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white">
             Sync<span className="text-indigo-400">Script</span>
@@ -150,11 +183,16 @@ export default function Home() {
               <span className="text-xs font-bold uppercase tracking-wider text-indigo-400">
                 Step 1: Upload Media
               </span>
-              <span className="text-xs text-slate-500">Audio / Video accepted</span>
+              <span className="text-xs text-slate-500">Audio / Video auto-extracted</span>
             </div>
             <FileDropzone
               selectedFile={selectedFile}
-              onFileSelect={setSelectedFile}
+              onFileSelect={(file) => {
+                setSelectedFile(file);
+                setPreparedChunks([]);
+                setChunkProgress(0);
+                setChunkStatus("");
+              }}
               disabled={isProcessing}
             />
           </div>
@@ -187,6 +225,25 @@ export default function Home() {
             )}
           </div>
 
+          {/* Audio Chunking Progress Indicator */}
+          <ChunkingProgress
+            progressPercent={chunkProgress}
+            statusText={chunkStatus}
+            isProcessing={isProcessing}
+          />
+
+          {/* Prepared Chunks Status Badge */}
+          {preparedChunks.length > 0 && (
+            <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs">
+              <Layers className="w-4 h-4 flex-shrink-0" />
+              <span>
+                <strong>Pipeline Ready:</strong> {preparedChunks.length}{" "}
+                {preparedChunks.length === 1 ? "Audio stream" : "Audio chunks (10-min slices)"}{" "}
+                prepared with continuous timeline offsets.
+              </span>
+            </div>
+          )}
+
           {/* Action Trigger */}
           <div className="pt-2">
             <button
@@ -206,14 +263,14 @@ export default function Home() {
               ) : (
                 <>
                   <Wand2 className="w-5 h-5" />
-                  <span>⚡ Generate Timestamps & Transcript</span>
+                  <span>⚡ Process Audio & Generate Timestamps</span>
                 </>
               )}
             </button>
           </div>
         </div>
 
-        {/* Step 3: Result Viewer (Renders when output is available) */}
+        {/* Step 3: Result Viewer */}
         <ResultViewer
           blocks={resultBlocks}
           formattedOutput={formattedOutput}
@@ -223,7 +280,7 @@ export default function Home() {
         {/* Footer */}
         <footer className="text-center text-xs text-slate-500 pt-6 border-t border-slate-900 space-y-1">
           <p>
-            SyncScript • Built with Next.js 14, Tailwind CSS & OpenAI Whisper engine.
+            SyncScript • Built with Next.js 14, Web Audio API & OpenAI Whisper engine.
           </p>
           <p className="text-slate-600">
             Complies with MNC Enterprise Engineering Lifecycle & SOP Standards.

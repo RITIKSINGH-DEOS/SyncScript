@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Copy, Check, Download, FileText, Subtitles, ListChecks, Plus, Trash2, Link as LinkIcon, AlignLeft } from "lucide-react";
+import { Copy, Check, Download, Subtitles, ListChecks, Plus, Trash2, AlignLeft } from "lucide-react";
 import { FormattedTimestampBlock } from "@/types/transcription";
 
 interface ResultViewerProps {
@@ -21,7 +21,7 @@ export function ResultViewer({
 }: ResultViewerProps) {
   const [copied, setCopied] = useState(false);
   // Default view is "inline" (matching the user's desired story paragraph format)
-  const [viewMode, setViewMode] = useState<"inline" | "cards" | "lines">("inline");
+  const [viewMode, setViewMode] = useState<"inline" | "cards">("inline");
 
   // Choose the best text to copy based on active view mode
   const textToCopy = viewMode === "inline" && inlineScriptOutput ? inlineScriptOutput : formattedOutput;
@@ -86,29 +86,6 @@ export function ResultViewer({
         return newBlock;
       }
       return b;
-    });
-
-    onBlocksChange(updated);
-  };
-
-  const handleAutoChain = () => {
-    if (!onBlocksChange || blocks.length < 2) return;
-
-    let prevEnd = blocks[0].endSeconds;
-    const updated = blocks.map((b, i) => {
-      if (i === 0) return b;
-      const duration = Math.max(1, b.endSeconds - b.startSeconds);
-      const newStart = prevEnd;
-      const newEnd = newStart + duration;
-      prevEnd = newEnd;
-
-      return {
-        ...b,
-        startSeconds: newStart,
-        endSeconds: newEnd,
-        startTime: formatSecondsToTime(newStart),
-        endTime: formatSecondsToTime(newEnd),
-      };
     });
 
     onBlocksChange(updated);
@@ -183,14 +160,14 @@ export function ResultViewer({
 
         {/* View Switcher & Action buttons */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* View Mode Selector */}
-          <div className="bg-slate-950 p-1 rounded-xl border border-slate-800 flex items-center">
+          {/* View Mode Selector: Clean 2-Option Switcher */}
+          <div className="bg-slate-950 p-1 rounded-xl border border-slate-800 flex items-center shadow-inner">
             <button
               onClick={() => setViewMode("inline")}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all duration-300 ${
                 viewMode === "inline"
-                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
-                  : "text-slate-400 hover:text-white"
+                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30 scale-[1.02]"
+                  : "text-slate-400 hover:text-white hover:bg-slate-900/60"
               }`}
               title="Continuous narrative with (0:00) timestamps inline"
             >
@@ -199,45 +176,22 @@ export function ResultViewer({
             </button>
             <button
               onClick={() => setViewMode("cards")}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all duration-300 ${
                 viewMode === "cards"
-                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
-                  : "text-slate-400 hover:text-white"
+                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30 scale-[1.02]"
+                  : "text-slate-400 hover:text-white hover:bg-slate-900/60"
               }`}
-              title="Edit individual timestamps"
+              title="Edit individual timestamps manually"
             >
               <ListChecks className="w-3.5 h-3.5" />
               <span>Edit Times</span>
             </button>
-            <button
-              onClick={() => setViewMode("lines")}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors ${
-                viewMode === "lines"
-                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
-                  : "text-slate-400 hover:text-white"
-              }`}
-              title="Line-by-line block view"
-            >
-              <FileText className="w-3.5 h-3.5" />
-              <span>Blocks</span>
-            </button>
           </div>
-
-          {onBlocksChange && blocks.length > 1 && viewMode === "cards" && (
-            <button
-              onClick={handleAutoChain}
-              className="px-2.5 py-1.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 text-xs font-medium flex items-center gap-1.5 transition-colors"
-              title="Automatically connect end times to next start times"
-            >
-              <LinkIcon className="w-3.5 h-3.5" />
-              <span>Chain Times</span>
-            </button>
-          )}
 
           {/* Big Copy Button */}
           <button
             onClick={handleCopy}
-            className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-lg shadow-indigo-600/30 active:scale-95"
+            className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all duration-200 shadow-lg shadow-indigo-600/30 active:scale-95"
             title="Copy entire script with timestamps"
           >
             {copied ? (
@@ -255,7 +209,7 @@ export function ResultViewer({
 
           <button
             onClick={handleDownloadTxt}
-            className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-medium flex items-center gap-1.5 transition-colors"
+            className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-medium flex items-center gap-1.5 transition-all duration-200 hover:border-slate-600"
             title="Download TXT file"
           >
             <Download className="w-3.5 h-3.5" />
@@ -264,7 +218,7 @@ export function ResultViewer({
 
           <button
             onClick={handleDownloadSrt}
-            className="px-3 py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-xs font-medium flex items-center gap-1.5 transition-colors"
+            className="px-3 py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-xs font-medium flex items-center gap-1.5 transition-all duration-200 hover:border-indigo-400/50"
             title="Download Subtitles (.SRT)"
           >
             <Subtitles className="w-3.5 h-3.5 text-indigo-400" />
@@ -273,85 +227,89 @@ export function ResultViewer({
         </div>
       </div>
 
-      {/* Output Content */}
-      {viewMode === "inline" ? (
-        /* The Exact Inline Story Paragraph Format requested by user */
-        <div className="bg-slate-950 border border-slate-800 rounded-xl p-5 max-h-[30rem] overflow-y-auto font-sans text-sm sm:text-base text-slate-200 leading-relaxed tracking-normal select-all whitespace-pre-wrap selection:bg-indigo-500/40">
-          {inlineScriptOutput || formattedOutput}
-        </div>
-      ) : viewMode === "lines" ? (
-        <div className="bg-slate-950 border border-slate-800/80 rounded-xl p-4 max-h-96 overflow-y-auto font-mono text-xs sm:text-sm text-slate-300 whitespace-pre-wrap leading-relaxed selection:bg-indigo-500/40">
-          {formattedOutput}
-        </div>
-      ) : (
-        /* Interactive Card Editor */
-        <div className="space-y-3 max-h-[28rem] overflow-y-auto pr-1">
-          {blocks.map((block, i) => (
-            <div
-              key={block.index}
-              className="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-slate-700/80 transition-all group"
-            >
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <span className="px-2 py-1 rounded-md bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-mono text-xs font-semibold">
-                  #{String(block.index).padStart(2, "0")}
-                </span>
+      {/* Output Content with Smooth Transition */}
+      <div className="transition-all duration-300 ease-in-out">
+        {viewMode === "inline" ? (
+          /* The Exact Inline Story Paragraph Format requested by user */
+          <div
+            key="inline-story-view"
+            className="animate-in fade-in slide-in-from-bottom-2 duration-300 bg-slate-950 border border-slate-800 rounded-xl p-5 max-h-[30rem] overflow-y-auto font-sans text-sm sm:text-base text-slate-200 leading-relaxed tracking-normal select-all whitespace-pre-wrap selection:bg-indigo-500/40 shadow-inner"
+          >
+            {inlineScriptOutput || formattedOutput}
+          </div>
+        ) : (
+          /* Interactive Card Editor with Smooth Animation */
+          <div
+            key="cards-editor-view"
+            className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-3 max-h-[28rem] overflow-y-auto pr-1"
+          >
+            {blocks.map((block, i) => (
+              <div
+                key={block.index}
+                className="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-slate-700/80 transition-all duration-200 group shadow-sm"
+              >
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <span className="px-2 py-1 rounded-md bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-mono text-xs font-semibold">
+                    #{String(block.index).padStart(2, "0")}
+                  </span>
 
-                <div className="flex items-center gap-1 bg-slate-900 border border-slate-700/70 rounded-lg px-2 py-1">
-                  <input
-                    type="text"
-                    value={block.startTime}
-                    onChange={(e) => handleBlockChange(i, "startTime", e.target.value)}
-                    placeholder="0:00"
-                    className="w-12 bg-transparent text-center font-mono text-xs text-indigo-400 font-semibold focus:outline-none focus:text-indigo-300"
-                  />
-                  <span className="text-slate-500 font-mono text-xs">-</span>
-                  <input
-                    type="text"
-                    value={block.endTime}
-                    onChange={(e) => handleBlockChange(i, "endTime", e.target.value)}
-                    placeholder="0:05"
-                    className="w-12 bg-transparent text-center font-mono text-xs text-indigo-400 font-semibold focus:outline-none focus:text-indigo-300"
-                  />
+                  <div className="flex items-center gap-1 bg-slate-900 border border-slate-700/70 rounded-lg px-2 py-1">
+                    <input
+                      type="text"
+                      value={block.startTime}
+                      onChange={(e) => handleBlockChange(i, "startTime", e.target.value)}
+                      placeholder="0:00"
+                      className="w-12 bg-transparent text-center font-mono text-xs text-indigo-400 font-semibold focus:outline-none focus:text-indigo-300"
+                    />
+                    <span className="text-slate-500 font-mono text-xs">-</span>
+                    <input
+                      type="text"
+                      value={block.endTime}
+                      onChange={(e) => handleBlockChange(i, "endTime", e.target.value)}
+                      placeholder="0:05"
+                      className="w-12 bg-transparent text-center font-mono text-xs text-indigo-400 font-semibold focus:outline-none focus:text-indigo-300"
+                    />
+                  </div>
                 </div>
+
+                <input
+                  type="text"
+                  value={block.text}
+                  onChange={(e) => handleBlockChange(i, "text", e.target.value)}
+                  className="w-full bg-transparent text-xs sm:text-sm text-slate-200 font-sans focus:outline-none focus:bg-slate-900/60 rounded px-2 py-1 transition-colors"
+                />
+
+                {onBlocksChange && blocks.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteScene(i)}
+                    className="opacity-60 group-hover:opacity-100 hover:text-rose-400 text-slate-500 p-1 rounded-lg transition-colors flex-shrink-0"
+                    title="Delete this scene"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
               </div>
+            ))}
 
-              <input
-                type="text"
-                value={block.text}
-                onChange={(e) => handleBlockChange(i, "text", e.target.value)}
-                className="w-full bg-transparent text-xs sm:text-sm text-slate-200 font-sans focus:outline-none focus:bg-slate-900/60 rounded px-2 py-1 transition-colors"
-              />
-
-              {onBlocksChange && blocks.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => handleDeleteScene(i)}
-                  className="opacity-60 group-hover:opacity-100 hover:text-rose-400 text-slate-500 p-1 rounded-lg transition-colors flex-shrink-0"
-                  title="Delete this scene"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-          ))}
-
-          {onBlocksChange && (
-            <button
-              type="button"
-              onClick={handleAddScene}
-              className="w-full py-2.5 rounded-xl border border-dashed border-slate-800 hover:border-indigo-500/50 bg-slate-950/40 hover:bg-indigo-500/5 text-xs text-slate-400 hover:text-indigo-300 flex items-center justify-center gap-1.5 transition-all"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Add Another Scene Block</span>
-            </button>
-          )}
-        </div>
-      )}
+            {onBlocksChange && (
+              <button
+                type="button"
+                onClick={handleAddScene}
+                className="w-full py-2.5 rounded-xl border border-dashed border-slate-800 hover:border-indigo-500/50 bg-slate-950/40 hover:bg-indigo-500/5 text-xs text-slate-400 hover:text-indigo-300 flex items-center justify-center gap-1.5 transition-all duration-200"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Another Scene Block</span>
+              </button>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Bottom info */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-2 text-xs text-slate-500 border-t border-slate-800/60">
         <span>
-          💡 <strong>Tip:</strong> In &ldquo;Full Script&rdquo; view, the timestamps (0:00), (0:05)... are embedded inline so you can copy the entire story in one click!
+          💡 <strong>Tip:</strong> In &ldquo;Full Script&rdquo; view, timestamps (0:00), (0:05)... are embedded inline so you can copy the entire story in one click!
         </span>
         <button
           onClick={onClear}

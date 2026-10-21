@@ -341,25 +341,25 @@ export default function Home() {
           onClear={handleClear}
         />
 
-        {/* How It Works Explainer */}
+        {/* Mode Quick Guide (Short & Simple) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-slate-900/30 border border-slate-800/60 rounded-2xl p-5 space-y-2">
+          <div className="bg-slate-900/30 border border-slate-800/60 rounded-2xl p-4 space-y-1.5">
             <div className="flex items-center gap-2 text-indigo-400 text-xs font-bold uppercase tracking-wider">
               <Clock className="w-4 h-4" />
-              <span>When to use Auto-Interval Mode</span>
+              <span>Auto-Interval Mode</span>
             </div>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Ideal when you have raw voiceover audio and need new images/visuals at fixed rhythms (e.g. every 5 seconds for YouTube Shorts, Reels, or TikTok faceless channels).
+              Best for Reels & Shorts. Slices voiceover into fixed second blocks (e.g. 5s) for quick image pacing.
             </p>
           </div>
 
-          <div className="bg-slate-900/30 border border-slate-800/60 rounded-2xl p-5 space-y-2">
+          <div className="bg-slate-900/30 border border-slate-800/60 rounded-2xl p-4 space-y-1.5">
             <div className="flex items-center gap-2 text-indigo-400 text-xs font-bold uppercase tracking-wider">
               <Tag className="w-4 h-4" />
-              <span>When to use Symbol Marker Mode</span>
+              <span>Symbol Marker Mode</span>
             </div>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Ideal when you already have a scripted story separated by visual scenes (&ldquo;|&rdquo;). Whisper aligns the spoken dialogue and stamps each scene with exact start/end seconds.
+              Best for Scripted Stories. Matches audio with &ldquo;|&rdquo; markers to timestamp exact visual scenes.
             </p>
           </div>
         </div>

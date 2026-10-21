@@ -1,14 +1,16 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FileDropzone } from "@/components/FileDropzone";
 import { IntervalTab } from "@/components/IntervalTab";
 import { MarkerTab } from "@/components/MarkerTab";
 import { ResultViewer } from "@/components/ResultViewer";
 import { ChunkingProgress } from "@/components/ChunkingProgress";
-import { FormattedTimestampBlock, ProcessingMode } from "@/types/transcription";
+import { ApiKeyModal } from "@/components/ApiKeyModal";
+import { FormattedTimestampBlock, ProcessingMode, WhisperWord } from "@/types/transcription";
 import { chunkAudioFile, AudioChunk } from "@/lib/audio-chunker";
-import { Clock, Tag, Wand2, ShieldCheck, Layers } from "lucide-react";
+import { groupWordsByInterval } from "@/lib/interval-grouper";
+import { Clock, Tag, Wand2, ShieldCheck, Layers, Key, AlertCircle } from "lucide-react";
 
 export default function Home() {
   const [activeMode, setActiveMode] = useState<ProcessingMode>("interval");
@@ -23,9 +25,25 @@ export default function Home() {
   const [chunkStatus, setChunkStatus] = useState<string>("");
   const [preparedChunks, setPreparedChunks] = useState<AudioChunk[]>([]);
   
+  // API Key State (LocalStorage BYOK)
+  const [apiKey, setApiKey] = useState<string>("");
+  const [isKeyModalOpen, setIsKeyModalOpen] = useState<boolean>(false);
+
   // Result State
   const [resultBlocks, setResultBlocks] = useState<FormattedTimestampBlock[]>([]);
   const [formattedOutput, setFormattedOutput] = useState<string>("");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("syncscript_groq_api_key");
+    if (saved) setApiKey(saved);
+  }, []);
+
+  const handleSaveApiKey = (key: string) => {
+    setApiKey(key);
+    localStorage.setItem("syncscript_groq_api_key", key);
+    setErrorMessage(null);
+  };
 
   const handleGenerate = async () => {
     if (!selectedFile) {
@@ -33,90 +51,95 @@ export default function Home() {
       return;
     }
 
+    setErrorMessage(null);
     setIsProcessing(true);
     setChunkProgress(5);
     setChunkStatus("Initiating Web Audio Pipeline...");
 
     try {
-      // Phase 2: Execute Client-Side Audio Chunking Engine
+      // Step 1: Client-Side Audio Extraction & 10-Minute Chunking
       const chunks = await chunkAudioFile(selectedFile, 600, (percent, status) => {
-        setChunkProgress(percent);
+        setChunkProgress(Math.min(percent, 45));
         setChunkStatus(status);
       });
 
       setPreparedChunks(chunks);
 
-      // Simulate Phase 2 chunk readiness with offset mapping
-      let mockBlocks: FormattedTimestampBlock[] = [];
-      let totalIndex = 1;
+      const allBlocks: FormattedTimestampBlock[] = [];
+      let nextIndex = 1;
 
-      chunks.forEach((chunk) => {
-        const offset = chunk.startSeconds;
+      // Step 2: Sequential Cloud Processing through Groq Whisper API
+      for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i];
+        const stepProgress = 45 + Math.round(((i + 1) / chunks.length) * 50);
+        setChunkProgress(stepProgress);
+        setChunkStatus(`Transcribing chunk ${i + 1} of ${chunks.length} with Whisper Large-v3...`);
+
+        const formData = new FormData();
+        formData.append("file", chunk.file);
+        if (apiKey) {
+          formData.append("apiKey", apiKey);
+        }
+
+        const res = await fetch("/api/transcribe", {
+          method: "POST",
+          body: formData,
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || !data.success) {
+          if (res.status === 401 || data.error?.includes("Groq API key")) {
+            setIsKeyModalOpen(true);
+          }
+          throw new Error(data.error || "Failed to transcribe audio.");
+        }
+
+        const words: WhisperWord[] = data.words || [];
+
+        // Step 3: Phase 3 Real Interval Bucketing Logic
         if (activeMode === "interval") {
-          const sampleLines = [
-            "Once upon a time in a misty ancient forest",
-            "A lone white wolf stood at the edge of the cliff",
-            "Watching the aurora borealis illuminate the arctic sky",
-          ];
-
-          sampleLines.forEach((line, i) => {
-            const startSec = offset + i * intervalSeconds;
-            const endSec = offset + (i + 1) * intervalSeconds;
-
-            const formatTime = (s: number) => {
-              const m = Math.floor(s / 60);
-              const sec = Math.floor(s % 60);
-              return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
-            };
-
-            mockBlocks.push({
-              index: totalIndex++,
-              startTime: formatTime(startSec),
-              endTime: formatTime(endSec),
-              startSeconds: startSec,
-              endSeconds: endSec,
-              text: line,
-            });
-          });
+          const chunkBlocks = groupWordsByInterval(
+            words,
+            intervalSeconds,
+            chunk.startSeconds,
+            nextIndex
+          );
+          allBlocks.push(...chunkBlocks);
+          nextIndex += chunkBlocks.length;
         } else {
+          // Placeholder for Phase 4 Marker logic (simulated until Phase 4)
           const segments = scriptText
             ? scriptText.split(markerSymbol).map((s) => s.trim()).filter(Boolean)
-            : [
-                "A brave knight approached the ancient citadel",
-                "Dragons circled the stormy crimson sky above",
-                "Drawing his enchanted blade, he stood ready for destiny",
-              ];
+            : ["Sample line one", "Sample line two"];
 
           segments.forEach((seg, idx) => {
-            const startSec = offset + idx * 6;
-            const endSec = offset + (idx + 1) * 6;
-            const formatTime = (s: number) => {
-              const m = Math.floor(s / 60);
-              const sec = Math.floor(s % 60);
-              return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
-            };
-
-            mockBlocks.push({
-              index: totalIndex++,
-              startTime: formatTime(startSec),
-              endTime: formatTime(endSec),
+            const startSec = chunk.startSeconds + idx * 5;
+            const endSec = chunk.startSeconds + (idx + 1) * 5;
+            allBlocks.push({
+              index: nextIndex++,
+              startTime: `00:${String(startSec).padStart(2, "0")}`,
+              endTime: `00:${String(endSec).padStart(2, "0")}`,
               startSeconds: startSec,
               endSeconds: endSec,
               text: seg,
             });
           });
         }
-      });
+      }
 
-      const outputText = mockBlocks
+      const outputText = allBlocks
         .map((b) => `[${b.startTime} - ${b.endTime}] ${b.text}`)
         .join("\n");
 
-      setResultBlocks(mockBlocks);
+      setResultBlocks(allBlocks);
       setFormattedOutput(outputText);
-    } catch (err) {
-      console.error("Audio processing failed:", err);
-      alert("Failed to decode audio. Please ensure the file is a valid media format.");
+      setChunkProgress(100);
+      setChunkStatus("Transcription & timestamp generation complete!");
+    } catch (err: unknown) {
+      console.error("Transcription pipeline failed:", err);
+      const msg = err instanceof Error ? err.message : "Transcription failed.";
+      setErrorMessage(msg);
     } finally {
       setIsProcessing(false);
     }
@@ -128,23 +151,37 @@ export default function Home() {
     setPreparedChunks([]);
     setChunkProgress(0);
     setChunkStatus("");
+    setErrorMessage(null);
   };
 
   return (
     <main className="min-h-screen bg-[#090d16] text-slate-100 py-10 px-4 sm:px-6 lg:px-8 font-sans selection:bg-indigo-500/30 selection:text-indigo-200">
       <div className="max-w-4xl mx-auto space-y-8">
         {/* Header Section */}
-        <header className="text-center space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-            <ShieldCheck className="w-3.5 h-3.5" />
-            <span>MNC Enterprise Architecture • Client Audio Chunking Engine Ready</span>
+        <header className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>MNC Enterprise Architecture • Whisper Large-v3 Powered</span>
+            </div>
+
+            <button
+              onClick={() => setIsKeyModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 transition-colors"
+            >
+              <Key className="w-3.5 h-3.5 text-amber-400" />
+              <span>{apiKey ? "API Key Configured" : "Add Groq Key (Free)"}</span>
+            </button>
           </div>
-          <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white">
-            Sync<span className="text-indigo-400">Script</span>
-          </h1>
-          <p className="text-sm sm:text-base text-slate-400 max-w-xl mx-auto">
-            Convert audio into custom interval and symbol-aligned timestamped transcripts for AI video & image creators.
-          </p>
+
+          <div className="text-center space-y-2">
+            <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white">
+              Sync<span className="text-indigo-400">Script</span>
+            </h1>
+            <p className="text-sm sm:text-base text-slate-400 max-w-xl mx-auto">
+              Convert audio into custom interval and symbol-aligned timestamped transcripts for AI video & image creators.
+            </p>
+          </div>
         </header>
 
         {/* Interactive Mode Switcher (2 Tabs) */}
@@ -192,6 +229,7 @@ export default function Home() {
                 setPreparedChunks([]);
                 setChunkProgress(0);
                 setChunkStatus("");
+                setErrorMessage(null);
               }}
               disabled={isProcessing}
             />
@@ -225,6 +263,24 @@ export default function Home() {
             )}
           </div>
 
+          {/* Error Message Toast */}
+          {errorMessage && (
+            <div className="flex items-start gap-3 p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs animate-in fade-in duration-200">
+              <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p className="font-semibold">{errorMessage}</p>
+                {errorMessage.includes("Groq API key") && (
+                  <button
+                    onClick={() => setIsKeyModalOpen(true)}
+                    className="underline text-indigo-400 hover:text-indigo-300 font-medium"
+                  >
+                    Click here to enter your free Groq API key
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Audio Chunking Progress Indicator */}
           <ChunkingProgress
             progressPercent={chunkProgress}
@@ -233,7 +289,7 @@ export default function Home() {
           />
 
           {/* Prepared Chunks Status Badge */}
-          {preparedChunks.length > 0 && (
+          {preparedChunks.length > 0 && !isProcessing && (
             <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs">
               <Layers className="w-4 h-4 flex-shrink-0" />
               <span>
@@ -258,12 +314,12 @@ export default function Home() {
               {isProcessing ? (
                 <>
                   <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                  <span>Processing Audio Track...</span>
+                  <span>Processing & Transcribing Audio...</span>
                 </>
               ) : (
                 <>
                   <Wand2 className="w-5 h-5" />
-                  <span>⚡ Process Audio & Generate Timestamps</span>
+                  <span>⚡ Transcribe & Generate Timestamps</span>
                 </>
               )}
             </button>
@@ -287,6 +343,14 @@ export default function Home() {
           </p>
         </footer>
       </div>
+
+      {/* Groq API Key Settings Modal */}
+      <ApiKeyModal
+        isOpen={isKeyModalOpen}
+        onClose={() => setIsKeyModalOpen(false)}
+        onSave={handleSaveApiKey}
+        currentKey={apiKey}
+      />
     </main>
   );
 }

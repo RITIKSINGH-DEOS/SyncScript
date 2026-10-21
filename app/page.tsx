@@ -6,12 +6,11 @@ import { IntervalTab } from "@/components/IntervalTab";
 import { MarkerTab } from "@/components/MarkerTab";
 import { ResultViewer } from "@/components/ResultViewer";
 import { ChunkingProgress } from "@/components/ChunkingProgress";
-import { ApiKeyModal } from "@/components/ApiKeyModal";
 import { FormattedTimestampBlock, ProcessingMode, WhisperWord } from "@/types/transcription";
 import { chunkAudioFile, AudioChunk } from "@/lib/audio-chunker";
 import { groupWordsByInterval } from "@/lib/interval-grouper";
 import { alignScriptWithWords } from "@/lib/marker-aligner";
-import { Clock, Tag, Wand2, ShieldCheck, Layers, Key, AlertCircle, HelpCircle, CheckCircle2, Sparkles } from "lucide-react";
+import { Clock, Tag, Wand2, ShieldCheck, Layers, AlertCircle } from "lucide-react";
 
 export default function Home() {
   const [activeMode, setActiveMode] = useState<ProcessingMode>("interval");
@@ -25,21 +24,12 @@ export default function Home() {
   const [chunkProgress, setChunkProgress] = useState<number>(0);
   const [chunkStatus, setChunkStatus] = useState<string>("");
   const [preparedChunks, setPreparedChunks] = useState<AudioChunk[]>([]);
-  
-  // API Key State (LocalStorage BYOK)
-  const [apiKey, setApiKey] = useState<string>("");
-  const [isKeyModalOpen, setIsKeyModalOpen] = useState<boolean>(false);
 
   // Result & Error State
   const [resultBlocks, setResultBlocks] = useState<FormattedTimestampBlock[]>([]);
   const [formattedOutput, setFormattedOutput] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [warningMessage, setWarningMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("syncscript_groq_api_key");
-    if (saved) setApiKey(saved);
-  }, []);
 
   // Real-time symbol check for Marker mode
   useEffect(() => {
@@ -55,12 +45,6 @@ export default function Home() {
       setWarningMessage(null);
     }
   }, [activeMode, scriptText, markerSymbol]);
-
-  const handleSaveApiKey = (key: string) => {
-    setApiKey(key);
-    localStorage.setItem("syncscript_groq_api_key", key);
-    setErrorMessage(null);
-  };
 
   const handleGenerate = async () => {
     if (!selectedFile) {
@@ -103,9 +87,6 @@ export default function Home() {
 
         const formData = new FormData();
         formData.append("file", chunk.file);
-        if (apiKey) {
-          formData.append("apiKey", apiKey);
-        }
 
         const res = await fetch("/api/transcribe", {
           method: "POST",
@@ -115,9 +96,6 @@ export default function Home() {
         const data = await res.json();
 
         if (!res.ok || !data.success) {
-          if (res.status === 401 || data.error?.includes("Groq API key")) {
-            setIsKeyModalOpen(true);
-          }
           throw new Error(data.error || "Failed to transcribe audio.");
         }
 
@@ -197,31 +175,19 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-[#090d16] text-slate-100 py-10 px-4 sm:px-6 lg:px-8 font-sans selection:bg-indigo-500/30 selection:text-indigo-200">
       <div className="max-w-4xl mx-auto space-y-8">
-        {/* Header Section */}
-        <header className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>MNC Enterprise Grade • 100% Free & Open Architecture</span>
-            </div>
-
-            <button
-              onClick={() => setIsKeyModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 transition-colors shadow-sm"
-            >
-              <Key className="w-3.5 h-3.5 text-amber-400" />
-              <span>{apiKey ? "API Key Configured" : "Add Groq Key (Free)"}</span>
-            </button>
+        {/* Clean Central Header */}
+        <header className="text-center space-y-3">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shadow-sm">
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>MNC Enterprise Architecture • 100% Free & Unlimited</span>
           </div>
 
-          <div className="text-center space-y-2">
-            <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white">
-              Sync<span className="text-indigo-400">Script</span>
-            </h1>
-            <p className="text-sm sm:text-base text-slate-400 max-w-xl mx-auto">
-              Convert audio into custom interval and symbol-aligned timestamped transcripts for AI video & image creators.
-            </p>
-          </div>
+          <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-white">
+            Sync<span className="text-indigo-400">Script</span>
+          </h1>
+          <p className="text-sm sm:text-base text-slate-400 max-w-xl mx-auto leading-relaxed">
+            Convert audio into custom interval and symbol-aligned timestamped transcripts for AI video & image creators.
+          </p>
         </header>
 
         {/* Interactive Mode Switcher (2 Tabs) */}
@@ -315,17 +281,7 @@ export default function Home() {
           {errorMessage && (
             <div className="flex items-start gap-3 p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs animate-in fade-in duration-200">
               <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
-              <div className="space-y-1">
-                <p className="font-semibold">{errorMessage}</p>
-                {errorMessage.includes("Groq API key") && (
-                  <button
-                    onClick={() => setIsKeyModalOpen(true)}
-                    className="underline text-indigo-400 hover:text-indigo-300 font-medium"
-                  >
-                    Click here to enter your free Groq API key
-                  </button>
-                )}
-              </div>
+              <p className="font-semibold">{errorMessage}</p>
             </div>
           )}
 
@@ -418,14 +374,6 @@ export default function Home() {
           </p>
         </footer>
       </div>
-
-      {/* Groq API Key Settings Modal */}
-      <ApiKeyModal
-        isOpen={isKeyModalOpen}
-        onClose={() => setIsKeyModalOpen(false)}
-        onSave={handleSaveApiKey}
-        currentKey={apiKey}
-      />
     </main>
   );
 }

@@ -10,6 +10,7 @@ import { ApiKeyModal } from "@/components/ApiKeyModal";
 import { FormattedTimestampBlock, ProcessingMode, WhisperWord } from "@/types/transcription";
 import { chunkAudioFile, AudioChunk } from "@/lib/audio-chunker";
 import { groupWordsByInterval } from "@/lib/interval-grouper";
+import { alignScriptWithWords } from "@/lib/marker-aligner";
 import { Clock, Tag, Wand2, ShieldCheck, Layers, Key, AlertCircle } from "lucide-react";
 
 export default function Home() {
@@ -51,6 +52,11 @@ export default function Home() {
       return;
     }
 
+    if (activeMode === "marker" && !scriptText.trim()) {
+      alert("Please paste your marked voiceover script in the text box before generating!");
+      return;
+    }
+
     setErrorMessage(null);
     setIsProcessing(true);
     setChunkProgress(5);
@@ -59,19 +65,23 @@ export default function Home() {
     try {
       // Step 1: Client-Side Audio Extraction & 10-Minute Chunking
       const chunks = await chunkAudioFile(selectedFile, 600, (percent, status) => {
-        setChunkProgress(Math.min(percent, 45));
+        setChunkProgress(Math.min(percent, 40));
         setChunkStatus(status);
       });
 
       setPreparedChunks(chunks);
 
-      const allBlocks: FormattedTimestampBlock[] = [];
+      const allTranscribedWords: WhisperWord[] = [];
+      const allIntervalBlocks: FormattedTimestampBlock[] = [];
+      let totalAudioDuration = 0;
       let nextIndex = 1;
 
       // Step 2: Sequential Cloud Processing through Groq Whisper API
       for (let i = 0; i < chunks.length; i++) {
         const chunk = chunks[i];
-        const stepProgress = 45 + Math.round(((i + 1) / chunks.length) * 50);
+        totalAudioDuration = Math.max(totalAudioDuration, chunk.endSeconds);
+
+        const stepProgress = 40 + Math.round(((i + 1) / chunks.length) * 50);
         setChunkProgress(stepProgress);
         setChunkStatus(`Transcribing chunk ${i + 1} of ${chunks.length} with Whisper Large-v3...`);
 
@@ -97,7 +107,16 @@ export default function Home() {
 
         const words: WhisperWord[] = data.words || [];
 
-        // Step 3: Phase 3 Real Interval Bucketing Logic
+        // Adjust word timestamps by chunk offset
+        const offsetWords = words.map((w) => ({
+          word: w.word,
+          start: chunk.startSeconds + w.start,
+          end: chunk.startSeconds + w.end,
+        }));
+
+        allTranscribedWords.push(...offsetWords);
+
+        // For Interval Mode: Group on the fly per chunk
         if (activeMode === "interval") {
           const chunkBlocks = groupWordsByInterval(
             words,
@@ -105,34 +124,32 @@ export default function Home() {
             chunk.startSeconds,
             nextIndex
           );
-          allBlocks.push(...chunkBlocks);
+          allIntervalBlocks.push(...chunkBlocks);
           nextIndex += chunkBlocks.length;
-        } else {
-          // Placeholder for Phase 4 Marker logic (simulated until Phase 4)
-          const segments = scriptText
-            ? scriptText.split(markerSymbol).map((s) => s.trim()).filter(Boolean)
-            : ["Sample line one", "Sample line two"];
-
-          segments.forEach((seg, idx) => {
-            const startSec = chunk.startSeconds + idx * 5;
-            const endSec = chunk.startSeconds + (idx + 1) * 5;
-            allBlocks.push({
-              index: nextIndex++,
-              startTime: `00:${String(startSec).padStart(2, "0")}`,
-              endTime: `00:${String(endSec).padStart(2, "0")}`,
-              startSeconds: startSec,
-              endSeconds: endSec,
-              text: seg,
-            });
-          });
         }
       }
 
-      const outputText = allBlocks
+      // Step 3: Format Output based on active mode
+      let finalBlocks: FormattedTimestampBlock[] = [];
+
+      if (activeMode === "interval") {
+        finalBlocks = allIntervalBlocks;
+      } else {
+        // Phase 4: Forced Alignment on Symbol Marker
+        setChunkStatus("Aligning marked script with spoken word timestamps...");
+        finalBlocks = alignScriptWithWords(
+          scriptText,
+          markerSymbol,
+          allTranscribedWords,
+          totalAudioDuration
+        );
+      }
+
+      const outputText = finalBlocks
         .map((b) => `[${b.startTime} - ${b.endTime}] ${b.text}`)
         .join("\n");
 
-      setResultBlocks(allBlocks);
+      setResultBlocks(finalBlocks);
       setFormattedOutput(outputText);
       setChunkProgress(100);
       setChunkStatus("Transcription & timestamp generation complete!");
@@ -162,7 +179,7 @@ export default function Home() {
           <div className="flex items-center justify-between">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
               <ShieldCheck className="w-3.5 h-3.5" />
-              <span>MNC Enterprise Architecture • Whisper Large-v3 Powered</span>
+              <span>MNC Enterprise Architecture • Dual Mode AI Alignment</span>
             </div>
 
             <button
@@ -314,12 +331,16 @@ export default function Home() {
               {isProcessing ? (
                 <>
                   <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                  <span>Processing & Transcribing Audio...</span>
+                  <span>Processing & Aligning Audio...</span>
                 </>
               ) : (
                 <>
                   <Wand2 className="w-5 h-5" />
-                  <span>⚡ Transcribe & Generate Timestamps</span>
+                  <span>
+                    {activeMode === "interval"
+                      ? "⚡ Transcribe & Generate Timestamps"
+                      : "🎯 Align Script & Generate Timestamps"}
+                  </span>
                 </>
               )}
             </button>

@@ -203,18 +203,18 @@ export default function Home() {
           </p>
         </header>
 
-        {/* Interactive Mode Switcher (2 Tabs) */}
+        {/* Interactive Mode Switcher (2 Tabs with Smooth Animation) */}
         <div className="flex justify-center">
-          <div className="inline-flex p-1.5 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl">
+          <div className="inline-flex p-1.5 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl relative">
             <button
               onClick={() => {
                 setActiveMode("interval");
                 handleClear();
               }}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 ${
                 activeMode === "interval"
-                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
-                  : "text-slate-400 hover:text-slate-200"
+                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 scale-[1.02]"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40"
               }`}
             >
               <Clock className="w-4 h-4" />
@@ -225,10 +225,10 @@ export default function Home() {
                 setActiveMode("marker");
                 handleClear();
               }}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 ${
                 activeMode === "marker"
-                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
-                  : "text-slate-400 hover:text-slate-200"
+                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 scale-[1.02]"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40"
               }`}
             >
               <Tag className="w-4 h-4" />
@@ -239,67 +239,77 @@ export default function Home() {
 
         {/* Main Work Area Card */}
         <div className="bg-slate-900/40 border border-slate-800/80 rounded-3xl p-6 sm:p-8 backdrop-blur-xl shadow-2xl space-y-6">
-          {/* TAB 1: Auto-Interval Mode with Audio Upload */}
-          {activeMode === "interval" ? (
-            <>
-              {/* Step 1: Upload */}
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-bold uppercase tracking-wider text-indigo-400">
-                    Step 1: Upload Media
-                  </span>
-                  <span className="text-xs text-slate-500">Audio / Video auto-extracted</span>
-                </div>
-                <FileDropzone
-                  selectedFile={selectedFile}
-                  onFileSelect={(file) => {
-                    setSelectedFile(file);
-                    setPreparedChunks([]);
-                    setChunkProgress(0);
-                    setChunkStatus("");
-                    setErrorMessage(null);
-                  }}
-                  disabled={isProcessing}
-                />
-              </div>
-
-              {/* Step 2: Settings */}
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-bold uppercase tracking-wider text-indigo-400">
-                    Step 2: Configure Time Interval
-                  </span>
-                  <span className="text-xs text-slate-500">Fixed second pacing</span>
+          {/* TAB CONTENT WITH SMOOTH ANIMATED TRANSITION */}
+          <div className="transition-all duration-300 ease-in-out">
+            {activeMode === "interval" ? (
+              <div
+                key="interval-tab-content"
+                className="space-y-6 animate-in fade-in slide-in-from-left-3 duration-300 fill-mode-forwards"
+              >
+                {/* Step 1: Upload */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-bold uppercase tracking-wider text-indigo-400">
+                      Step 1: Upload Media
+                    </span>
+                    <span className="text-xs text-slate-500">Audio / Video auto-extracted</span>
+                  </div>
+                  <FileDropzone
+                    selectedFile={selectedFile}
+                    onFileSelect={(file) => {
+                      setSelectedFile(file);
+                      setPreparedChunks([]);
+                      setChunkProgress(0);
+                      setChunkStatus("");
+                      setErrorMessage(null);
+                    }}
+                    disabled={isProcessing}
+                  />
                 </div>
 
-                <IntervalTab
-                  interval={intervalSeconds}
-                  onIntervalChange={setIntervalSeconds}
-                  disabled={isProcessing}
-                />
-              </div>
-            </>
-          ) : (
-            /* TAB 2: Script Timeline Mode (NO AUDIO UPLOAD NEEDED!) */
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold uppercase tracking-wider text-indigo-400">
-                  Step 1: Paste Marked Script & Set Defaults
-                </span>
-                <span className="text-xs text-emerald-400 font-medium">No audio required • Fully editable</span>
-              </div>
+                {/* Step 2: Settings */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-bold uppercase tracking-wider text-indigo-400">
+                      Step 2: Configure Time Interval
+                    </span>
+                    <span className="text-xs text-slate-500">Fixed second pacing</span>
+                  </div>
 
-              <MarkerTab
-                marker={markerSymbol}
-                onMarkerChange={setMarkerSymbol}
-                scriptText={scriptText}
-                onScriptChange={setScriptText}
-                defaultDuration={defaultDuration}
-                onDefaultDurationChange={setDefaultDuration}
-                disabled={isProcessing}
-              />
-            </div>
-          )}
+                  <IntervalTab
+                    interval={intervalSeconds}
+                    onIntervalChange={setIntervalSeconds}
+                    disabled={isProcessing}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div
+                key="marker-tab-content"
+                className="animate-in fade-in slide-in-from-right-3 duration-300 fill-mode-forwards"
+              >
+                {/* Step 1: Paste Marked Script & Set Defaults */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-bold uppercase tracking-wider text-indigo-400">
+                      Step 1: Paste Marked Script & Set Defaults
+                    </span>
+                    <span className="text-xs text-emerald-400 font-medium">No audio required • Fully editable</span>
+                  </div>
+
+                  <MarkerTab
+                    marker={markerSymbol}
+                    onMarkerChange={setMarkerSymbol}
+                    scriptText={scriptText}
+                    onScriptChange={setScriptText}
+                    defaultDuration={defaultDuration}
+                    onDefaultDurationChange={setDefaultDuration}
+                    disabled={isProcessing}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Warning Message Toast */}
           {warningMessage && (
@@ -343,7 +353,7 @@ export default function Home() {
             <button
               onClick={handleGenerate}
               disabled={isProcessing || (activeMode === "interval" && !selectedFile)}
-              className={`w-full py-4 px-6 rounded-2xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 transition-all shadow-xl ${
+              className={`w-full py-4 px-6 rounded-2xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 transition-all duration-300 shadow-xl ${
                 isProcessing || (activeMode === "interval" && !selectedFile)
                   ? "bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700/50"
                   : "bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white shadow-indigo-500/25 active:scale-[0.99]"

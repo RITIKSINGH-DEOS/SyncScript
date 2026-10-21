@@ -1,18 +1,19 @@
 "use client";
 
 import React, { useState } from "react";
-import { Copy, Check, Download, FileText, Subtitles, ListChecks } from "lucide-react";
+import { Copy, Check, Download, FileText, Subtitles, ListChecks, Plus, Trash2, Link as LinkIcon } from "lucide-react";
 import { FormattedTimestampBlock } from "@/types/transcription";
 
 interface ResultViewerProps {
   blocks: FormattedTimestampBlock[];
   formattedOutput: string;
   onClear: () => void;
+  onBlocksChange?: (updatedBlocks: FormattedTimestampBlock[]) => void;
 }
 
-export function ResultViewer({ blocks, formattedOutput, onClear }: ResultViewerProps) {
+export function ResultViewer({ blocks, formattedOutput, onClear, onBlocksChange }: ResultViewerProps) {
   const [copied, setCopied] = useState(false);
-  const [viewMode, setViewMode] = useState<"formatted" | "cards">("formatted");
+  const [viewMode, setViewMode] = useState<"formatted" | "cards">("cards");
 
   const handleCopy = async () => {
     try {
@@ -20,7 +21,6 @@ export function ResultViewer({ blocks, formattedOutput, onClear }: ResultViewerP
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Fallback
       const textarea = document.createElement("textarea");
       textarea.value = formattedOutput;
       document.body.appendChild(textarea);
@@ -42,10 +42,95 @@ export function ResultViewer({ blocks, formattedOutput, onClear }: ResultViewerP
     URL.revokeObjectURL(url);
   };
 
+  const parseTimeToSeconds = (timeStr: string): number => {
+    const parts = timeStr.trim().split(":").map(Number);
+    if (parts.length === 2) {
+      return (parts[0] || 0) * 60 + (parts[1] || 0);
+    } else if (parts.length === 3) {
+      return (parts[0] || 0) * 3600 + (parts[1] || 0) * 60 + (parts[2] || 0);
+    }
+    return 0;
+  };
+
+  const formatSecondsToTime = (secs: number): string => {
+    const total = Math.max(0, Math.floor(secs));
+    const m = Math.floor(total / 60);
+    const s = total % 60;
+    return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  };
+
+  const handleBlockChange = (index: number, field: "startTime" | "endTime" | "text", value: string) => {
+    if (!onBlocksChange) return;
+
+    const updated = blocks.map((b, i) => {
+      if (i === index) {
+        const newBlock = { ...b, [field]: value };
+        if (field === "startTime") {
+          newBlock.startSeconds = parseTimeToSeconds(value);
+        } else if (field === "endTime") {
+          newBlock.endSeconds = parseTimeToSeconds(value);
+        }
+        return newBlock;
+      }
+      return b;
+    });
+
+    onBlocksChange(updated);
+  };
+
+  const handleAutoChain = () => {
+    if (!onBlocksChange || blocks.length < 2) return;
+
+    let prevEnd = blocks[0].endSeconds;
+    const updated = blocks.map((b, i) => {
+      if (i === 0) return b;
+      const duration = Math.max(1, b.endSeconds - b.startSeconds);
+      const newStart = prevEnd;
+      const newEnd = newStart + duration;
+      prevEnd = newEnd;
+
+      return {
+        ...b,
+        startSeconds: newStart,
+        endSeconds: newEnd,
+        startTime: formatSecondsToTime(newStart),
+        endTime: formatSecondsToTime(newEnd),
+      };
+    });
+
+    onBlocksChange(updated);
+  };
+
+  const handleAddScene = () => {
+    if (!onBlocksChange) return;
+
+    const lastBlock = blocks[blocks.length - 1];
+    const newStartSec = lastBlock ? lastBlock.endSeconds : 0;
+    const newEndSec = newStartSec + 5;
+
+    const newBlock: FormattedTimestampBlock = {
+      index: blocks.length + 1,
+      startTime: formatSecondsToTime(newStartSec),
+      endTime: formatSecondsToTime(newEndSec),
+      startSeconds: newStartSec,
+      endSeconds: newEndSec,
+      text: "New visual scene description...",
+    };
+
+    onBlocksChange([...blocks, newBlock]);
+  };
+
+  const handleDeleteScene = (index: number) => {
+    if (!onBlocksChange || blocks.length <= 1) return;
+    const filtered = blocks.filter((_, i) => i !== index);
+    const reindexed = filtered.map((b, i) => ({ ...b, index: i + 1 }));
+    onBlocksChange(reindexed);
+  };
+
   const handleDownloadSrt = () => {
     let srtContent = "";
     blocks.forEach((block, index) => {
-      const formatTime = (secs: number) => {
+      const formatTimeSrt = (secs: number) => {
         const hrs = Math.floor(secs / 3600);
         const mins = Math.floor((secs % 3600) / 60);
         const s = Math.floor(secs % 60);
@@ -54,7 +139,7 @@ export function ResultViewer({ blocks, formattedOutput, onClear }: ResultViewerP
       };
 
       srtContent += `${index + 1}\n`;
-      srtContent += `${formatTime(block.startSeconds)} --> ${formatTime(block.endSeconds)}\n`;
+      srtContent += `${formatTimeSrt(block.startSeconds)} --> ${formatTimeSrt(block.endSeconds)}\n`;
       srtContent += `${block.text}\n\n`;
     });
 
@@ -76,16 +161,38 @@ export function ResultViewer({ blocks, formattedOutput, onClear }: ResultViewerP
         <div>
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-            <h3 className="text-base font-semibold text-white">Generated Transcripts & Timestamps</h3>
+            <h3 className="text-base font-semibold text-white">Interactive Timeline & Timestamps</h3>
           </div>
           <p className="text-xs text-slate-400 mt-0.5">
-            {blocks.length} timestamped scene blocks generated successfully.
+            {blocks.length} scenes generated. You can directly edit any timestamp or text below!
           </p>
         </div>
 
         {/* View Switcher & Action buttons */}
         <div className="flex flex-wrap items-center gap-2">
+          {onBlocksChange && blocks.length > 1 && (
+            <button
+              onClick={handleAutoChain}
+              className="px-2.5 py-1.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 text-xs font-medium flex items-center gap-1.5 transition-colors"
+              title="Automatically connect end times to next start times"
+            >
+              <LinkIcon className="w-3.5 h-3.5" />
+              <span>Chain Times</span>
+            </button>
+          )}
+
           <div className="bg-slate-950 p-1 rounded-xl border border-slate-800 flex items-center">
+            <button
+              onClick={() => setViewMode("cards")}
+              className={`px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors ${
+                viewMode === "cards"
+                  ? "bg-indigo-600 text-white"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              <ListChecks className="w-3.5 h-3.5" />
+              <span>Interactive Editor</span>
+            </button>
             <button
               onClick={() => setViewMode("formatted")}
               className={`px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors ${
@@ -96,17 +203,6 @@ export function ResultViewer({ blocks, formattedOutput, onClear }: ResultViewerP
             >
               <FileText className="w-3.5 h-3.5" />
               <span>Text View</span>
-            </button>
-            <button
-              onClick={() => setViewMode("cards")}
-              className={`px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors ${
-                viewMode === "cards"
-                  ? "bg-indigo-600 text-white"
-                  : "text-slate-400 hover:text-white"
-              }`}
-            >
-              <ListChecks className="w-3.5 h-3.5" />
-              <span>Scene Cards</span>
             </button>
           </div>
 
@@ -153,31 +249,76 @@ export function ResultViewer({ blocks, formattedOutput, onClear }: ResultViewerP
           {formattedOutput}
         </div>
       ) : (
-        <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
-          {blocks.map((block) => (
+        <div className="space-y-3 max-h-[28rem] overflow-y-auto pr-1">
+          {blocks.map((block, i) => (
             <div
               key={block.index}
-              className="bg-slate-950/70 border border-slate-800/90 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-slate-700 transition-colors"
+              className="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-slate-700/80 transition-all group"
             >
-              <div className="flex items-center gap-2.5">
-                <span className="px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-mono text-xs font-semibold">
-                  Scene #{String(block.index).padStart(2, "0")}
+              {/* Left: Badge & Editable Timestamps */}
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span className="px-2 py-1 rounded-md bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-mono text-xs font-semibold">
+                  #{String(block.index).padStart(2, "0")}
                 </span>
-                <span className="font-mono text-xs text-slate-400 font-medium">
-                  [{block.startTime} - {block.endTime}]
-                </span>
+
+                <div className="flex items-center gap-1 bg-slate-900 border border-slate-700/70 rounded-lg px-2 py-1">
+                  <input
+                    type="text"
+                    value={block.startTime}
+                    onChange={(e) => handleBlockChange(i, "startTime", e.target.value)}
+                    placeholder="00:00"
+                    className="w-12 bg-transparent text-center font-mono text-xs text-slate-200 font-semibold focus:outline-none focus:text-indigo-400"
+                  />
+                  <span className="text-slate-500 font-mono text-xs">-</span>
+                  <input
+                    type="text"
+                    value={block.endTime}
+                    onChange={(e) => handleBlockChange(i, "endTime", e.target.value)}
+                    placeholder="00:05"
+                    className="w-12 bg-transparent text-center font-mono text-xs text-indigo-400 font-semibold focus:outline-none focus:text-indigo-300"
+                  />
+                </div>
               </div>
-              <p className="text-xs sm:text-sm text-slate-200 flex-1 font-sans sm:text-right">
-                {block.text}
-              </p>
+
+              {/* Center: Editable Text */}
+              <input
+                type="text"
+                value={block.text}
+                onChange={(e) => handleBlockChange(i, "text", e.target.value)}
+                className="w-full bg-transparent text-xs sm:text-sm text-slate-200 font-sans focus:outline-none focus:bg-slate-900/60 rounded px-2 py-1 transition-colors"
+              />
+
+              {/* Right: Delete Scene */}
+              {onBlocksChange && blocks.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => handleDeleteScene(i)}
+                  className="opacity-60 group-hover:opacity-100 hover:text-rose-400 text-slate-500 p-1 rounded-lg transition-colors flex-shrink-0"
+                  title="Delete this scene"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
             </div>
           ))}
+
+          {/* Add Scene Button */}
+          {onBlocksChange && (
+            <button
+              type="button"
+              onClick={handleAddScene}
+              className="w-full py-2.5 rounded-xl border border-dashed border-slate-800 hover:border-indigo-500/50 bg-slate-950/40 hover:bg-indigo-500/5 text-xs text-slate-400 hover:text-indigo-300 flex items-center justify-center gap-1.5 transition-all"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add Another Scene Block</span>
+            </button>
+          )}
         </div>
       )}
 
       {/* Bottom info */}
-      <div className="flex items-center justify-between pt-2 text-xs text-slate-500">
-        <span>Click .TXT to save locally or .SRT for video editors (Premiere, CapCut).</span>
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-2 text-xs text-slate-500 border-t border-slate-800/60">
+        <span>✏️ Timestamps and text are editable. All exports (.TXT & .SRT) update in real-time.</span>
         <button
           onClick={onClear}
           className="text-slate-500 hover:text-slate-300 text-xs transition-colors"

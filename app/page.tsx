@@ -10,7 +10,7 @@ import { FormattedTimestampBlock, ProcessingMode, WhisperWord } from "@/types/tr
 import { chunkAudioFile, AudioChunk } from "@/lib/audio-chunker";
 import { groupWordsByInterval } from "@/lib/interval-grouper";
 import { alignScriptWithWords } from "@/lib/marker-aligner";
-import { Clock, Tag, Wand2, ShieldCheck, Layers, AlertCircle } from "lucide-react";
+import { Clock, Tag, Wand2, Sparkles, Layers, AlertCircle } from "lucide-react";
 
 export default function Home() {
   const [activeMode, setActiveMode] = useState<ProcessingMode>("interval");
@@ -178,8 +178,8 @@ export default function Home() {
         {/* Clean Central Header */}
         <header className="text-center space-y-3">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shadow-sm">
-            <ShieldCheck className="w-3.5 h-3.5" />
-            <span>MNC Enterprise Architecture • 100% Free & Unlimited</span>
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>AI Speech Alignment • 100% Free</span>
           </div>
 
           <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-white">
@@ -365,13 +365,8 @@ export default function Home() {
         </div>
 
         {/* Footer */}
-        <footer className="text-center text-xs text-slate-500 pt-6 border-t border-slate-900 space-y-1">
-          <p>
-            SyncScript • Built with Next.js 14, Web Audio API & OpenAI Whisper engine.
-          </p>
-          <p className="text-slate-600">
-            Complies with MNC Enterprise Engineering Lifecycle & SOP Standards.
-          </p>
+        <footer className="text-center text-xs text-slate-500 pt-6 border-t border-slate-900">
+          <p>SyncScript • Fast Audio Timestamps for Video Creators</p>
         </footer>
       </div>
     </main>

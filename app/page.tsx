@@ -8,18 +8,22 @@ import { ResultViewer } from "@/components/ResultViewer";
 import { ChunkingProgress } from "@/components/ChunkingProgress";
 import { FormattedTimestampBlock, ProcessingMode, WhisperWord } from "@/types/transcription";
 import { chunkAudioFile, AudioChunk } from "@/lib/audio-chunker";
-import { groupWordsByInterval } from "@/lib/interval-grouper";
-import { alignScriptWithWords } from "@/lib/marker-aligner";
-import { Clock, Tag, Wand2, Sparkles, Layers, AlertCircle } from "lucide-react";
+import { groupWordsByInterval, formatTimeCode } from "@/lib/interval-grouper";
+import { Clock, Tag, Wand2, Sparkles, Layers, AlertCircle, Sparkle } from "lucide-react";
 
 export default function Home() {
   const [activeMode, setActiveMode] = useState<ProcessingMode>("interval");
+  
+  // Mode 1: Audio state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [intervalSeconds, setIntervalSeconds] = useState<number>(5);
+  
+  // Mode 2: Script state (No audio needed!)
   const [markerSymbol, setMarkerSymbol] = useState<string>("|");
   const [scriptText, setScriptText] = useState<string>("");
+  const [defaultDuration, setDefaultDuration] = useState<number>(5);
   
-  // Pipeline & Chunking State
+  // Pipeline & Processing State
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [chunkProgress, setChunkProgress] = useState<number>(0);
   const [chunkStatus, setChunkStatus] = useState<string>("");
@@ -36,7 +40,7 @@ export default function Home() {
     if (activeMode === "marker" && scriptText.trim() && markerSymbol) {
       if (!scriptText.includes(markerSymbol)) {
         setWarningMessage(
-          `Notice: Your script currently does not contain the delimiter "${markerSymbol}". Please insert "${markerSymbol}" between scenes to define timestamps.`
+          `Notice: Your script does not contain "${markerSymbol}". Insert "${markerSymbol}" between scenes to define timeline cuts.`
         );
       } else {
         setWarningMessage(null);
@@ -46,18 +50,69 @@ export default function Home() {
     }
   }, [activeMode, scriptText, markerSymbol]);
 
+  // Synchronize formatted text output whenever resultBlocks change
+  const handleBlocksChange = (updatedBlocks: FormattedTimestampBlock[]) => {
+    setResultBlocks(updatedBlocks);
+    const outputText = updatedBlocks
+      .map((b) => `[${b.startTime} - ${b.endTime}] ${b.text}`)
+      .join("\n");
+    setFormattedOutput(outputText);
+  };
+
   const handleGenerate = async () => {
+    setErrorMessage(null);
+
+    // MODE 2: Script Timeline Mode (NO AUDIO NEEDED!)
+    if (activeMode === "marker") {
+      if (!scriptText.trim()) {
+        alert("Please paste your script with delimiter symbols (e.g. |) first!");
+        return;
+      }
+
+      setIsProcessing(true);
+      setChunkProgress(20);
+      setChunkStatus("Parsing script scenes...");
+
+      setTimeout(() => {
+        const rawSegments = scriptText
+          .split(markerSymbol)
+          .map((s) => s.trim())
+          .filter(Boolean);
+
+        if (rawSegments.length === 0) {
+          setIsProcessing(false);
+          setErrorMessage("No valid scenes found. Please insert delimiter symbol between text.");
+          return;
+        }
+
+        const generatedBlocks: FormattedTimestampBlock[] = rawSegments.map((seg, idx) => {
+          const startSec = idx * defaultDuration;
+          const endSec = (idx + 1) * defaultDuration;
+
+          return {
+            index: idx + 1,
+            startTime: formatTimeCode(startSec),
+            endTime: formatTimeCode(endSec),
+            startSeconds: startSec,
+            endSeconds: endSec,
+            text: seg,
+          };
+        });
+
+        handleBlocksChange(generatedBlocks);
+        setChunkProgress(100);
+        setChunkStatus("Timeline generated! You can directly edit any timestamp below.");
+        setIsProcessing(false);
+      }, 300);
+      return;
+    }
+
+    // MODE 1: Audio Mode (Requires Media File)
     if (!selectedFile) {
       alert("Please upload an audio or video file first!");
       return;
     }
 
-    if (activeMode === "marker" && !scriptText.trim()) {
-      alert("Please paste your marked voiceover script in the text box before generating!");
-      return;
-    }
-
-    setErrorMessage(null);
     setIsProcessing(true);
     setChunkProgress(5);
     setChunkStatus("Initiating Web Audio Pipeline...");
@@ -71,15 +126,12 @@ export default function Home() {
 
       setPreparedChunks(chunks);
 
-      const allTranscribedWords: WhisperWord[] = [];
       const allIntervalBlocks: FormattedTimestampBlock[] = [];
-      let totalAudioDuration = 0;
       let nextIndex = 1;
 
       // Step 2: Sequential Cloud Processing through Groq Whisper API
       for (let i = 0; i < chunks.length; i++) {
         const chunk = chunks[i];
-        totalAudioDuration = Math.max(totalAudioDuration, chunk.endSeconds);
 
         const stepProgress = 40 + Math.round(((i + 1) / chunks.length) * 50);
         setChunkProgress(stepProgress);
@@ -101,57 +153,25 @@ export default function Home() {
 
         const words: WhisperWord[] = data.words || [];
 
-        // Adjust word timestamps by chunk offset
-        const offsetWords = words.map((w) => ({
-          word: w.word,
-          start: chunk.startSeconds + w.start,
-          end: chunk.startSeconds + w.end,
-        }));
-
-        allTranscribedWords.push(...offsetWords);
-
-        // For Interval Mode: Group on the fly per chunk
-        if (activeMode === "interval") {
-          const chunkBlocks = groupWordsByInterval(
-            words,
-            intervalSeconds,
-            chunk.startSeconds,
-            nextIndex
-          );
-          allIntervalBlocks.push(...chunkBlocks);
-          nextIndex += chunkBlocks.length;
-        }
+        // Group into fixed interval blocks
+        const chunkBlocks = groupWordsByInterval(
+          words,
+          intervalSeconds,
+          chunk.startSeconds,
+          nextIndex
+        );
+        allIntervalBlocks.push(...chunkBlocks);
+        nextIndex += chunkBlocks.length;
       }
 
       // Edge Case: No words detected
-      if (allTranscribedWords.length === 0) {
+      if (allIntervalBlocks.length === 0) {
         throw new Error(
           "No spoken words detected in the audio file. Please check audio volume and ensure clear speech."
         );
       }
 
-      // Step 3: Format Output based on active mode
-      let finalBlocks: FormattedTimestampBlock[] = [];
-
-      if (activeMode === "interval") {
-        finalBlocks = allIntervalBlocks;
-      } else {
-        // Phase 4: Forced Alignment on Symbol Marker
-        setChunkStatus("Aligning marked script with spoken word timestamps...");
-        finalBlocks = alignScriptWithWords(
-          scriptText,
-          markerSymbol,
-          allTranscribedWords,
-          totalAudioDuration
-        );
-      }
-
-      const outputText = finalBlocks
-        .map((b) => `[${b.startTime} - ${b.endTime}] ${b.text}`)
-        .join("\n");
-
-      setResultBlocks(finalBlocks);
-      setFormattedOutput(outputText);
+      handleBlocksChange(allIntervalBlocks);
       setChunkProgress(100);
       setChunkStatus("Transcription & timestamp generation complete!");
     } catch (err: unknown) {
@@ -179,14 +199,14 @@ export default function Home() {
         <header className="text-center space-y-3">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shadow-sm">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>AI Speech Alignment • 100% Free</span>
+            <span>AI Speech & Timeline Alignment • 100% Free</span>
           </div>
 
           <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-white">
             Sync<span className="text-indigo-400">Script</span>
           </h1>
           <p className="text-sm sm:text-base text-slate-400 max-w-xl mx-auto leading-relaxed">
-            Convert audio into custom interval and symbol-aligned timestamped transcripts for AI video & image creators.
+            Generate custom interval transcripts and editable scene timelines for AI video & image creators.
           </p>
         </header>
 
@@ -194,7 +214,10 @@ export default function Home() {
         <div className="flex justify-center">
           <div className="inline-flex p-1.5 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl">
             <button
-              onClick={() => setActiveMode("interval")}
+              onClick={() => {
+                setActiveMode("interval");
+                handleClear();
+              }}
               className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
                 activeMode === "interval"
                   ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
@@ -205,7 +228,10 @@ export default function Home() {
               <span>⏱️ Auto-Interval Mode</span>
             </button>
             <button
-              onClick={() => setActiveMode("marker")}
+              onClick={() => {
+                setActiveMode("marker");
+                handleClear();
+              }}
               className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
                 activeMode === "marker"
                   ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
@@ -213,61 +239,74 @@ export default function Home() {
               }`}
             >
               <Tag className="w-4 h-4" />
-              <span>🏷️ Symbol Marker Mode</span>
+              <span>🏷️ Script Timeline Mode</span>
             </button>
           </div>
         </div>
 
         {/* Main Work Area Card */}
         <div className="bg-slate-900/40 border border-slate-800/80 rounded-3xl p-6 sm:p-8 backdrop-blur-xl shadow-2xl space-y-6">
-          {/* Step 1: Upload */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-indigo-400">
-                Step 1: Upload Media
-              </span>
-              <span className="text-xs text-slate-500">Audio / Video auto-extracted</span>
-            </div>
-            <FileDropzone
-              selectedFile={selectedFile}
-              onFileSelect={(file) => {
-                setSelectedFile(file);
-                setPreparedChunks([]);
-                setChunkProgress(0);
-                setChunkStatus("");
-                setErrorMessage(null);
-              }}
-              disabled={isProcessing}
-            />
-          </div>
+          {/* TAB 1: Auto-Interval Mode with Audio Upload */}
+          {activeMode === "interval" ? (
+            <>
+              {/* Step 1: Upload */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-bold uppercase tracking-wider text-indigo-400">
+                    Step 1: Upload Media
+                  </span>
+                  <span className="text-xs text-slate-500">Audio / Video auto-extracted</span>
+                </div>
+                <FileDropzone
+                  selectedFile={selectedFile}
+                  onFileSelect={(file) => {
+                    setSelectedFile(file);
+                    setPreparedChunks([]);
+                    setChunkProgress(0);
+                    setChunkStatus("");
+                    setErrorMessage(null);
+                  }}
+                  disabled={isProcessing}
+                />
+              </div>
 
-          {/* Step 2: Settings based on active tab */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-indigo-400">
-                Step 2: Configure Mode
-              </span>
-              <span className="text-xs text-slate-500">
-                {activeMode === "interval" ? "Fixed second pacing" : "Symbol-matched pacing"}
-              </span>
-            </div>
+              {/* Step 2: Settings */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-bold uppercase tracking-wider text-indigo-400">
+                    Step 2: Configure Time Interval
+                  </span>
+                  <span className="text-xs text-slate-500">Fixed second pacing</span>
+                </div>
 
-            {activeMode === "interval" ? (
-              <IntervalTab
-                interval={intervalSeconds}
-                onIntervalChange={setIntervalSeconds}
-                disabled={isProcessing}
-              />
-            ) : (
+                <IntervalTab
+                  interval={intervalSeconds}
+                  onIntervalChange={setIntervalSeconds}
+                  disabled={isProcessing}
+                />
+              </div>
+            </>
+          ) : (
+            /* TAB 2: Script Timeline Mode (NO AUDIO UPLOAD NEEDED!) */
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-bold uppercase tracking-wider text-indigo-400">
+                  Step 1: Paste Marked Script & Set Defaults
+                </span>
+                <span className="text-xs text-emerald-400 font-medium">No audio required • Fully editable</span>
+              </div>
+
               <MarkerTab
                 marker={markerSymbol}
                 onMarkerChange={setMarkerSymbol}
                 scriptText={scriptText}
                 onScriptChange={setScriptText}
+                defaultDuration={defaultDuration}
+                onDefaultDurationChange={setDefaultDuration}
                 disabled={isProcessing}
               />
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Warning Message Toast */}
           {warningMessage && (
@@ -285,15 +324,17 @@ export default function Home() {
             </div>
           )}
 
-          {/* Audio Chunking Progress Indicator */}
-          <ChunkingProgress
-            progressPercent={chunkProgress}
-            statusText={chunkStatus}
-            isProcessing={isProcessing}
-          />
+          {/* Audio Chunking Progress Indicator (Only in Audio Mode) */}
+          {activeMode === "interval" && (
+            <ChunkingProgress
+              progressPercent={chunkProgress}
+              statusText={chunkStatus}
+              isProcessing={isProcessing}
+            />
+          )}
 
-          {/* Prepared Chunks Status Badge */}
-          {preparedChunks.length > 0 && !isProcessing && (
+          {/* Prepared Chunks Status Badge (Only in Audio Mode) */}
+          {activeMode === "interval" && preparedChunks.length > 0 && !isProcessing && (
             <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs">
               <Layers className="w-4 h-4 flex-shrink-0" />
               <span>
@@ -308,9 +349,9 @@ export default function Home() {
           <div className="pt-2">
             <button
               onClick={handleGenerate}
-              disabled={!selectedFile || isProcessing}
+              disabled={isProcessing || (activeMode === "interval" && !selectedFile)}
               className={`w-full py-4 px-6 rounded-2xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 transition-all shadow-xl ${
-                !selectedFile || isProcessing
+                isProcessing || (activeMode === "interval" && !selectedFile)
                   ? "bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700/50"
                   : "bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white shadow-indigo-500/25 active:scale-[0.99]"
               }`}
@@ -318,7 +359,11 @@ export default function Home() {
               {isProcessing ? (
                 <>
                   <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                  <span>Processing & Aligning Audio...</span>
+                  <span>
+                    {activeMode === "interval"
+                      ? "Processing & Transcribing Audio..."
+                      : "Generating Editable Timeline..."}
+                  </span>
                 </>
               ) : (
                 <>
@@ -326,7 +371,7 @@ export default function Home() {
                   <span>
                     {activeMode === "interval"
                       ? "⚡ Transcribe & Generate Timestamps"
-                      : "🎯 Align Script & Generate Timestamps"}
+                      : "🎯 Generate Editable Timeline & Scenes"}
                   </span>
                 </>
               )}
@@ -334,32 +379,33 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Step 3: Result Viewer */}
+        {/* Step 3: Result Viewer & Interactive Timeline Editor */}
         <ResultViewer
           blocks={resultBlocks}
           formattedOutput={formattedOutput}
           onClear={handleClear}
+          onBlocksChange={handleBlocksChange}
         />
 
-        {/* Mode Quick Guide (Short & Simple) */}
+        {/* Mode Quick Guide */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-slate-900/30 border border-slate-800/60 rounded-2xl p-4 space-y-1.5">
             <div className="flex items-center gap-2 text-indigo-400 text-xs font-bold uppercase tracking-wider">
               <Clock className="w-4 h-4" />
-              <span>Auto-Interval Mode</span>
+              <span>Auto-Interval Mode (Audio)</span>
             </div>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Best for Reels & Shorts. Slices voiceover into fixed second blocks (e.g. 5s) for quick image pacing.
+              Upload voiceover audio. Whisper AI transcribes and slices it into fixed blocks (e.g. 5s) for reels and shorts.
             </p>
           </div>
 
           <div className="bg-slate-900/30 border border-slate-800/60 rounded-2xl p-4 space-y-1.5">
             <div className="flex items-center gap-2 text-indigo-400 text-xs font-bold uppercase tracking-wider">
               <Tag className="w-4 h-4" />
-              <span>Symbol Marker Mode</span>
+              <span>Script Timeline Mode (No Audio)</span>
             </div>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Best for Scripted Stories. Matches audio with &ldquo;|&rdquo; markers to timestamp exact visual scenes.
+              No audio needed. Paste script with &ldquo;|&rdquo; delimiters to generate scenes, then freely edit timestamps and durations manually!
             </p>
           </div>
         </div>

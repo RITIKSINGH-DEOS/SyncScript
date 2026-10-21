@@ -1,13 +1,15 @@
 "use client";
 
 import React from "react";
-import { Tag, HelpCircle, AlignLeft } from "lucide-react";
+import { Tag, AlignLeft, Clock } from "lucide-react";
 
 interface MarkerTabProps {
   marker: string;
   onMarkerChange: (val: string) => void;
   scriptText: string;
   onScriptChange: (val: string) => void;
+  defaultDuration: number;
+  onDefaultDurationChange: (val: number) => void;
   disabled?: boolean;
 }
 
@@ -16,6 +18,8 @@ export function MarkerTab({
   onMarkerChange,
   scriptText,
   onScriptChange,
+  defaultDuration,
+  onDefaultDurationChange,
   disabled = false,
 }: MarkerTabProps) {
   const insertDemo = () => {
@@ -27,24 +31,18 @@ export function MarkerTab({
   return (
     <div className="space-y-5">
       <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-4">
-        {/* Symbol Selector */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <Tag className="w-5 h-5 text-indigo-400" />
-              <label htmlFor="marker-input" className="text-sm font-semibold text-white">
-                Split Delimiter Symbol
-              </label>
+        {/* Settings Bar */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-2 border-b border-slate-800/80">
+          {/* Symbol Delimiter */}
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <div className="flex items-center gap-1.5 text-sm font-semibold text-white">
+                <Tag className="w-4 h-4 text-indigo-400" />
+                <span>Split Delimiter:</span>
+              </div>
+              <p className="text-[11px] text-slate-400">Separates each scene</p>
             </div>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Wherever this symbol appears in your script, a cut will be aligned with the audio.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-500 font-medium">Active Symbol:</span>
             <input
-              id="marker-input"
               type="text"
               value={marker}
               onChange={(e) => onMarkerChange(e.target.value)}
@@ -53,14 +51,37 @@ export function MarkerTab({
               className="w-14 text-center font-mono font-bold text-indigo-400 bg-slate-800 border border-slate-700 rounded-xl px-2 py-1 text-sm focus:outline-none focus:border-indigo-500"
             />
           </div>
+
+          {/* Default Duration per Scene */}
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <div className="flex items-center gap-1.5 text-sm font-semibold text-white">
+                <Clock className="w-4 h-4 text-indigo-400" />
+                <span>Default Duration:</span>
+              </div>
+              <p className="text-[11px] text-slate-400">Initial seconds per block</p>
+            </div>
+            <div className="flex items-center gap-1 bg-slate-800 border border-slate-700 rounded-xl px-2 py-1">
+              <input
+                type="number"
+                min="1"
+                max="60"
+                value={defaultDuration}
+                onChange={(e) => onDefaultDurationChange(Math.max(1, Number(e.target.value)))}
+                disabled={disabled}
+                className="w-10 text-center font-bold text-indigo-400 bg-transparent focus:outline-none text-sm"
+              />
+              <span className="text-xs text-slate-400">s</span>
+            </div>
+          </div>
         </div>
 
         {/* Script Textarea */}
-        <div className="space-y-2 pt-2">
+        <div className="space-y-2 pt-1">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5 text-xs font-medium text-slate-300">
               <AlignLeft className="w-4 h-4 text-slate-400" />
-              <span>Paste Your Marked Script:</span>
+              <span>Paste Your Script (Separated by &ldquo;{marker}&rdquo;):</span>
             </div>
             <button
               type="button"
@@ -76,18 +97,15 @@ export function MarkerTab({
             value={scriptText}
             onChange={(e) => onScriptChange(e.target.value)}
             disabled={disabled}
-            rows={5}
+            rows={6}
             placeholder={`Enter your voiceover script here separated by "${marker}". Example:\nScene 1 description ${marker} Scene 2 description ${marker} Scene 3 description`}
             className="w-full bg-slate-950/80 border border-slate-800 rounded-xl p-4 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 font-sans leading-relaxed resize-y"
           />
         </div>
 
         {/* Informational Tip */}
-        <div className="flex items-start gap-2 bg-indigo-500/5 border border-indigo-500/10 rounded-xl p-3 text-xs text-slate-400">
-          <HelpCircle className="w-4 h-4 text-indigo-400 flex-shrink-0 mt-0.5" />
-          <span>
-            <strong>How it works:</strong> Whisper will transcribe your audio track, find the exact spoken timing of the words immediately preceding your &ldquo;{marker}&rdquo; delimiter, and assign start/end timestamps to each section.
-          </span>
+        <div className="bg-indigo-500/5 border border-indigo-500/10 rounded-xl p-3 text-xs text-slate-400">
+          💡 <strong>100% Manual Control:</strong> No audio upload required! Clicking &ldquo;Generate Timeline&rdquo; will split your script into scenes, and you can freely edit each timestamp directly in the editor below.
         </div>
       </div>
     </div>

@@ -108,8 +108,8 @@ export default function Home() {
     setChunkStatus("Initiating Web Audio Pipeline...");
 
     try {
-      // Step 1: Client-Side Audio Extraction & 10-Minute Chunking
-      const chunks = await chunkAudioFile(selectedFile, 600, (percent, status) => {
+      // Step 1: Client-Side Audio Extraction & 4-Minute Chunking (16kHz Whisper Encoding)
+      const chunks = await chunkAudioFile(selectedFile, 240, (percent, status) => {
         setChunkProgress(Math.min(percent, 40));
         setChunkStatus(status);
       });
@@ -336,7 +336,7 @@ export default function Home() {
               <Layers className="w-4 h-4 flex-shrink-0" />
               <span>
                 <strong>Pipeline Ready:</strong> {preparedChunks.length}{" "}
-                {preparedChunks.length === 1 ? "Audio stream" : "Audio chunks (10-min slices)"}{" "}
+                {preparedChunks.length === 1 ? "Audio stream" : "Audio chunks (4-min slices)"}{" "}
                 prepared with continuous timeline offsets.
               </span>
             </div>

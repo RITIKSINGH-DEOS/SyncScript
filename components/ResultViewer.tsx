@@ -1,28 +1,39 @@
 "use client";
 
 import React, { useState } from "react";
-import { Copy, Check, Download, FileText, Subtitles, ListChecks, Plus, Trash2, Link as LinkIcon } from "lucide-react";
+import { Copy, Check, Download, FileText, Subtitles, ListChecks, Plus, Trash2, Link as LinkIcon, AlignLeft } from "lucide-react";
 import { FormattedTimestampBlock } from "@/types/transcription";
 
 interface ResultViewerProps {
   blocks: FormattedTimestampBlock[];
   formattedOutput: string;
+  inlineScriptOutput?: string;
   onClear: () => void;
   onBlocksChange?: (updatedBlocks: FormattedTimestampBlock[]) => void;
 }
 
-export function ResultViewer({ blocks, formattedOutput, onClear, onBlocksChange }: ResultViewerProps) {
+export function ResultViewer({
+  blocks,
+  formattedOutput,
+  inlineScriptOutput,
+  onClear,
+  onBlocksChange,
+}: ResultViewerProps) {
   const [copied, setCopied] = useState(false);
-  const [viewMode, setViewMode] = useState<"formatted" | "cards">("cards");
+  // Default view is "inline" (matching the user's desired story paragraph format)
+  const [viewMode, setViewMode] = useState<"inline" | "cards" | "lines">("inline");
+
+  // Choose the best text to copy based on active view mode
+  const textToCopy = viewMode === "inline" && inlineScriptOutput ? inlineScriptOutput : formattedOutput;
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(formattedOutput);
+      await navigator.clipboard.writeText(textToCopy);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
       const textarea = document.createElement("textarea");
-      textarea.value = formattedOutput;
+      textarea.value = textToCopy;
       document.body.appendChild(textarea);
       textarea.select();
       document.execCommand("copy");
@@ -33,17 +44,19 @@ export function ResultViewer({ blocks, formattedOutput, onClear, onBlocksChange 
   };
 
   const handleDownloadTxt = () => {
-    const blob = new Blob([formattedOutput], { type: "text/plain;charset=utf-8" });
+    const content = viewMode === "inline" && inlineScriptOutput ? inlineScriptOutput : formattedOutput;
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `syncscript-transcript-${Date.now()}.txt`;
+    link.download = `syncscript-story-${Date.now()}.txt`;
     link.click();
     URL.revokeObjectURL(url);
   };
 
   const parseTimeToSeconds = (timeStr: string): number => {
-    const parts = timeStr.trim().split(":").map(Number);
+    const cleaned = timeStr.replace(/[()\[\]]/g, "").trim();
+    const parts = cleaned.split(":").map(Number);
     if (parts.length === 2) {
       return (parts[0] || 0) * 60 + (parts[1] || 0);
     } else if (parts.length === 3) {
@@ -56,7 +69,7 @@ export function ResultViewer({ blocks, formattedOutput, onClear, onBlocksChange 
     const total = Math.max(0, Math.floor(secs));
     const m = Math.floor(total / 60);
     const s = total % 60;
-    return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+    return `${m}:${String(s).padStart(2, "0")}`;
   };
 
   const handleBlockChange = (index: number, field: "startTime" | "endTime" | "text", value: string) => {
@@ -161,16 +174,56 @@ export function ResultViewer({ blocks, formattedOutput, onClear, onBlocksChange 
         <div>
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-            <h3 className="text-base font-semibold text-white">Interactive Timeline & Timestamps</h3>
+            <h3 className="text-base font-semibold text-white">Generated Script with Timestamps</h3>
           </div>
           <p className="text-xs text-slate-400 mt-0.5">
-            {blocks.length} scenes generated. You can directly edit any timestamp or text below!
+            {blocks.length} timestamp points generated. Copy the whole script in 1 click!
           </p>
         </div>
 
         {/* View Switcher & Action buttons */}
         <div className="flex flex-wrap items-center gap-2">
-          {onBlocksChange && blocks.length > 1 && (
+          {/* View Mode Selector */}
+          <div className="bg-slate-950 p-1 rounded-xl border border-slate-800 flex items-center">
+            <button
+              onClick={() => setViewMode("inline")}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors ${
+                viewMode === "inline"
+                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                  : "text-slate-400 hover:text-white"
+              }`}
+              title="Continuous narrative with (0:00) timestamps inline"
+            >
+              <AlignLeft className="w-3.5 h-3.5" />
+              <span>Full Script</span>
+            </button>
+            <button
+              onClick={() => setViewMode("cards")}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors ${
+                viewMode === "cards"
+                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                  : "text-slate-400 hover:text-white"
+              }`}
+              title="Edit individual timestamps"
+            >
+              <ListChecks className="w-3.5 h-3.5" />
+              <span>Edit Times</span>
+            </button>
+            <button
+              onClick={() => setViewMode("lines")}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors ${
+                viewMode === "lines"
+                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                  : "text-slate-400 hover:text-white"
+              }`}
+              title="Line-by-line block view"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>Blocks</span>
+            </button>
+          </div>
+
+          {onBlocksChange && blocks.length > 1 && viewMode === "cards" && (
             <button
               onClick={handleAutoChain}
               className="px-2.5 py-1.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 text-xs font-medium flex items-center gap-1.5 transition-colors"
@@ -181,44 +234,21 @@ export function ResultViewer({ blocks, formattedOutput, onClear, onBlocksChange 
             </button>
           )}
 
-          <div className="bg-slate-950 p-1 rounded-xl border border-slate-800 flex items-center">
-            <button
-              onClick={() => setViewMode("cards")}
-              className={`px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors ${
-                viewMode === "cards"
-                  ? "bg-indigo-600 text-white"
-                  : "text-slate-400 hover:text-white"
-              }`}
-            >
-              <ListChecks className="w-3.5 h-3.5" />
-              <span>Interactive Editor</span>
-            </button>
-            <button
-              onClick={() => setViewMode("formatted")}
-              className={`px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors ${
-                viewMode === "formatted"
-                  ? "bg-indigo-600 text-white"
-                  : "text-slate-400 hover:text-white"
-              }`}
-            >
-              <FileText className="w-3.5 h-3.5" />
-              <span>Text View</span>
-            </button>
-          </div>
-
+          {/* Big Copy Button */}
           <button
             onClick={handleCopy}
-            className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-medium flex items-center gap-1.5 transition-colors"
+            className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-lg shadow-indigo-600/30 active:scale-95"
+            title="Copy entire script with timestamps"
           >
             {copied ? (
               <>
-                <Check className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-emerald-400">Copied!</span>
+                <Check className="w-3.5 h-3.5 text-emerald-300" />
+                <span>Copied All!</span>
               </>
             ) : (
               <>
                 <Copy className="w-3.5 h-3.5" />
-                <span>Copy</span>
+                <span>Copy All</span>
               </>
             )}
           </button>
@@ -244,18 +274,23 @@ export function ResultViewer({ blocks, formattedOutput, onClear, onBlocksChange 
       </div>
 
       {/* Output Content */}
-      {viewMode === "formatted" ? (
+      {viewMode === "inline" ? (
+        /* The Exact Inline Story Paragraph Format requested by user */
+        <div className="bg-slate-950 border border-slate-800 rounded-xl p-5 max-h-[30rem] overflow-y-auto font-sans text-sm sm:text-base text-slate-200 leading-relaxed tracking-normal select-all whitespace-pre-wrap selection:bg-indigo-500/40">
+          {inlineScriptOutput || formattedOutput}
+        </div>
+      ) : viewMode === "lines" ? (
         <div className="bg-slate-950 border border-slate-800/80 rounded-xl p-4 max-h-96 overflow-y-auto font-mono text-xs sm:text-sm text-slate-300 whitespace-pre-wrap leading-relaxed selection:bg-indigo-500/40">
           {formattedOutput}
         </div>
       ) : (
+        /* Interactive Card Editor */
         <div className="space-y-3 max-h-[28rem] overflow-y-auto pr-1">
           {blocks.map((block, i) => (
             <div
               key={block.index}
               className="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-slate-700/80 transition-all group"
             >
-              {/* Left: Badge & Editable Timestamps */}
               <div className="flex items-center gap-2 flex-shrink-0">
                 <span className="px-2 py-1 rounded-md bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-mono text-xs font-semibold">
                   #{String(block.index).padStart(2, "0")}
@@ -266,21 +301,20 @@ export function ResultViewer({ blocks, formattedOutput, onClear, onBlocksChange 
                     type="text"
                     value={block.startTime}
                     onChange={(e) => handleBlockChange(i, "startTime", e.target.value)}
-                    placeholder="00:00"
-                    className="w-12 bg-transparent text-center font-mono text-xs text-slate-200 font-semibold focus:outline-none focus:text-indigo-400"
+                    placeholder="0:00"
+                    className="w-12 bg-transparent text-center font-mono text-xs text-indigo-400 font-semibold focus:outline-none focus:text-indigo-300"
                   />
                   <span className="text-slate-500 font-mono text-xs">-</span>
                   <input
                     type="text"
                     value={block.endTime}
                     onChange={(e) => handleBlockChange(i, "endTime", e.target.value)}
-                    placeholder="00:05"
+                    placeholder="0:05"
                     className="w-12 bg-transparent text-center font-mono text-xs text-indigo-400 font-semibold focus:outline-none focus:text-indigo-300"
                   />
                 </div>
               </div>
 
-              {/* Center: Editable Text */}
               <input
                 type="text"
                 value={block.text}
@@ -288,7 +322,6 @@ export function ResultViewer({ blocks, formattedOutput, onClear, onBlocksChange 
                 className="w-full bg-transparent text-xs sm:text-sm text-slate-200 font-sans focus:outline-none focus:bg-slate-900/60 rounded px-2 py-1 transition-colors"
               />
 
-              {/* Right: Delete Scene */}
               {onBlocksChange && blocks.length > 1 && (
                 <button
                   type="button"
@@ -302,7 +335,6 @@ export function ResultViewer({ blocks, formattedOutput, onClear, onBlocksChange 
             </div>
           ))}
 
-          {/* Add Scene Button */}
           {onBlocksChange && (
             <button
               type="button"
@@ -318,7 +350,9 @@ export function ResultViewer({ blocks, formattedOutput, onClear, onBlocksChange 
 
       {/* Bottom info */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-2 text-xs text-slate-500 border-t border-slate-800/60">
-        <span>✏️ Timestamps and text are editable. All exports (.TXT & .SRT) update in real-time.</span>
+        <span>
+          💡 <strong>Tip:</strong> In &ldquo;Full Script&rdquo; view, the timestamps (0:00), (0:05)... are embedded inline so you can copy the entire story in one click!
+        </span>
         <button
           onClick={onClear}
           className="text-slate-500 hover:text-slate-300 text-xs transition-colors"

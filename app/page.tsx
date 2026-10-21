@@ -11,7 +11,7 @@ import { FormattedTimestampBlock, ProcessingMode, WhisperWord } from "@/types/tr
 import { chunkAudioFile, AudioChunk } from "@/lib/audio-chunker";
 import { groupWordsByInterval } from "@/lib/interval-grouper";
 import { alignScriptWithWords } from "@/lib/marker-aligner";
-import { Clock, Tag, Wand2, ShieldCheck, Layers, Key, AlertCircle } from "lucide-react";
+import { Clock, Tag, Wand2, ShieldCheck, Layers, Key, AlertCircle, HelpCircle, CheckCircle2, Sparkles } from "lucide-react";
 
 export default function Home() {
   const [activeMode, setActiveMode] = useState<ProcessingMode>("interval");
@@ -30,15 +30,31 @@ export default function Home() {
   const [apiKey, setApiKey] = useState<string>("");
   const [isKeyModalOpen, setIsKeyModalOpen] = useState<boolean>(false);
 
-  // Result State
+  // Result & Error State
   const [resultBlocks, setResultBlocks] = useState<FormattedTimestampBlock[]>([]);
   const [formattedOutput, setFormattedOutput] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [warningMessage, setWarningMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem("syncscript_groq_api_key");
     if (saved) setApiKey(saved);
   }, []);
+
+  // Real-time symbol check for Marker mode
+  useEffect(() => {
+    if (activeMode === "marker" && scriptText.trim() && markerSymbol) {
+      if (!scriptText.includes(markerSymbol)) {
+        setWarningMessage(
+          `Notice: Your script currently does not contain the delimiter "${markerSymbol}". Please insert "${markerSymbol}" between scenes to define timestamps.`
+        );
+      } else {
+        setWarningMessage(null);
+      }
+    } else {
+      setWarningMessage(null);
+    }
+  }, [activeMode, scriptText, markerSymbol]);
 
   const handleSaveApiKey = (key: string) => {
     setApiKey(key);
@@ -129,6 +145,13 @@ export default function Home() {
         }
       }
 
+      // Edge Case: No words detected
+      if (allTranscribedWords.length === 0) {
+        throw new Error(
+          "No spoken words detected in the audio file. Please check audio volume and ensure clear speech."
+        );
+      }
+
       // Step 3: Format Output based on active mode
       let finalBlocks: FormattedTimestampBlock[] = [];
 
@@ -179,12 +202,12 @@ export default function Home() {
           <div className="flex items-center justify-between">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
               <ShieldCheck className="w-3.5 h-3.5" />
-              <span>MNC Enterprise Architecture • Dual Mode AI Alignment</span>
+              <span>MNC Enterprise Grade • 100% Free & Open Architecture</span>
             </div>
 
             <button
               onClick={() => setIsKeyModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 transition-colors shadow-sm"
             >
               <Key className="w-3.5 h-3.5 text-amber-400" />
               <span>{apiKey ? "API Key Configured" : "Add Groq Key (Free)"}</span>
@@ -280,6 +303,14 @@ export default function Home() {
             )}
           </div>
 
+          {/* Warning Message Toast */}
+          {warningMessage && (
+            <div className="flex items-start gap-2.5 p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs animate-in fade-in duration-200">
+              <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+              <p>{warningMessage}</p>
+            </div>
+          )}
+
           {/* Error Message Toast */}
           {errorMessage && (
             <div className="flex items-start gap-3 p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs animate-in fade-in duration-200">
@@ -353,6 +384,29 @@ export default function Home() {
           formattedOutput={formattedOutput}
           onClear={handleClear}
         />
+
+        {/* How It Works Explainer */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-slate-900/30 border border-slate-800/60 rounded-2xl p-5 space-y-2">
+            <div className="flex items-center gap-2 text-indigo-400 text-xs font-bold uppercase tracking-wider">
+              <Clock className="w-4 h-4" />
+              <span>When to use Auto-Interval Mode</span>
+            </div>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Ideal when you have raw voiceover audio and need new images/visuals at fixed rhythms (e.g. every 5 seconds for YouTube Shorts, Reels, or TikTok faceless channels).
+            </p>
+          </div>
+
+          <div className="bg-slate-900/30 border border-slate-800/60 rounded-2xl p-5 space-y-2">
+            <div className="flex items-center gap-2 text-indigo-400 text-xs font-bold uppercase tracking-wider">
+              <Tag className="w-4 h-4" />
+              <span>When to use Symbol Marker Mode</span>
+            </div>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Ideal when you already have a scripted story separated by visual scenes (&ldquo;|&rdquo;). Whisper aligns the spoken dialogue and stamps each scene with exact start/end seconds.
+            </p>
+          </div>
+        </div>
 
         {/* Footer */}
         <footer className="text-center text-xs text-slate-500 pt-6 border-t border-slate-900 space-y-1">

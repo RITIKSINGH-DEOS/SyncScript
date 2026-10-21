@@ -67,6 +67,7 @@ export async function POST(req: NextRequest) {
       success: true,
       text: transcription.text,
       words: finalWords,
+      segments: segments,
     });
   } catch (error: unknown) {
     console.error("Groq Whisper API transcription error:", error);

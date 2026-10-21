@@ -2,22 +2,20 @@
 
 import React, { useState, useEffect } from "react";
 import { FileDropzone } from "@/components/FileDropzone";
-import { IntervalTab } from "@/components/IntervalTab";
 import { MarkerTab } from "@/components/MarkerTab";
 import { ResultViewer } from "@/components/ResultViewer";
 import { ChunkingProgress } from "@/components/ChunkingProgress";
-import { FormattedTimestampBlock, ProcessingMode, WhisperWord } from "@/types/transcription";
+import { FormattedTimestampBlock, ProcessingMode, WhisperWord, WhisperSegment } from "@/types/transcription";
 import { chunkAudioFile, AudioChunk } from "@/lib/audio-chunker";
-import { groupWordsByInterval, formatTimeCode } from "@/lib/interval-grouper";
+import { groupWordsByNaturalSpeech } from "@/lib/interval-grouper";
 import { generateInlineScript, reconstructInlineScriptFromBlocks } from "@/lib/inline-script-formatter";
 import { Clock, Tag, Wand2, Sparkles, Layers, AlertCircle } from "lucide-react";
 
 export default function Home() {
   const [activeMode, setActiveMode] = useState<ProcessingMode>("interval");
   
-  // Mode 1: Audio state
+  // Mode 1: Audio state (Natural scene detection, no manual seconds!)
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [intervalSeconds, setIntervalSeconds] = useState<number>(5);
   
   // Mode 2: Script state (No audio needed!)
   const [markerSymbol, setMarkerSymbol] = useState<string>("|");
@@ -99,7 +97,7 @@ export default function Home() {
       return;
     }
 
-    // MODE 1: Audio Mode (Requires Media File)
+    // MODE 1: Audio Mode (Requires Media File, Natural Sentence & Pause Detection)
     if (!selectedFile) {
       alert("Please upload an audio or video file first!");
       return;
@@ -144,11 +142,12 @@ export default function Home() {
         }
 
         const words: WhisperWord[] = data.words || [];
+        const segments: WhisperSegment[] = data.segments || [];
 
-        // Group into fixed interval blocks
-        const chunkBlocks = groupWordsByInterval(
+        // Group into natural speech scene blocks (speech pauses + sentence stops)
+        const chunkBlocks = groupWordsByNaturalSpeech(
           words,
-          intervalSeconds,
+          segments,
           chunk.startSeconds,
           nextIndex
         );
@@ -165,7 +164,7 @@ export default function Home() {
 
       handleBlocksChange(allIntervalBlocks);
       setChunkProgress(100);
-      setChunkStatus("Transcription & timestamp generation complete!");
+      setChunkStatus("Natural scene cuts & timestamps generated successfully!");
     } catch (err: unknown) {
       console.error("Transcription pipeline failed:", err);
       const msg = err instanceof Error ? err.message : "Transcription failed.";
@@ -199,7 +198,7 @@ export default function Home() {
             Sync<span className="text-indigo-400">Script</span>
           </h1>
           <p className="text-sm sm:text-base text-slate-400 max-w-xl mx-auto leading-relaxed">
-            Generate custom interval transcripts and editable scene timelines for AI video & image creators.
+            Generate natural scene timestamps and editable timelines for AI video & image creators.
           </p>
         </header>
 
@@ -218,7 +217,7 @@ export default function Home() {
               }`}
             >
               <Clock className="w-4 h-4" />
-              <span>⏱️ Auto-Interval Mode</span>
+              <span>⏱️ Audio Scene Mode</span>
             </button>
             <button
               onClick={() => {
@@ -244,15 +243,15 @@ export default function Home() {
             {activeMode === "interval" ? (
               <div
                 key="interval-tab-content"
-                className="space-y-6 animate-in fade-in slide-in-from-left-3 duration-300 fill-mode-forwards"
+                className="space-y-5 animate-in fade-in slide-in-from-left-3 duration-300 fill-mode-forwards"
               >
                 {/* Step 1: Upload */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-xs font-bold uppercase tracking-wider text-indigo-400">
-                      Step 1: Upload Media
+                      Step 1: Upload Audio or Video
                     </span>
-                    <span className="text-xs text-slate-500">Audio / Video auto-extracted</span>
+                    <span className="text-xs text-emerald-400 font-medium">Automatic Natural Scene Detection</span>
                   </div>
                   <FileDropzone
                     selectedFile={selectedFile}
@@ -267,20 +266,15 @@ export default function Home() {
                   />
                 </div>
 
-                {/* Step 2: Settings */}
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-bold uppercase tracking-wider text-indigo-400">
-                      Step 2: Configure Time Interval
-                    </span>
-                    <span className="text-xs text-slate-500">Fixed second pacing</span>
+                {/* AI Smart Scene Pacing Card */}
+                <div className="flex items-center gap-3 p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs shadow-sm">
+                  <Sparkles className="w-5 h-5 text-indigo-400 flex-shrink-0" />
+                  <div>
+                    <span className="font-semibold text-white">AI Natural Sentence & Pause Detection</span>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Whisper AI automatically cuts scenes at natural speech pauses and complete sentences. Words and sentences are never cut midway.
+                    </p>
                   </div>
-
-                  <IntervalTab
-                    interval={intervalSeconds}
-                    onIntervalChange={setIntervalSeconds}
-                    disabled={isProcessing}
-                  />
                 </div>
               </div>
             ) : (
@@ -364,7 +358,7 @@ export default function Home() {
                   <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
                   <span>
                     {activeMode === "interval"
-                      ? "Processing & Transcribing Audio..."
+                      ? "Transcribing & Detecting Natural Scenes..."
                       : "Generating Editable Timeline..."}
                   </span>
                 </>
@@ -373,7 +367,7 @@ export default function Home() {
                   <Wand2 className="w-5 h-5" />
                   <span>
                     {activeMode === "interval"
-                      ? "⚡ Transcribe & Generate Timestamps"
+                      ? "⚡ Transcribe & Generate Natural Scenes"
                       : "🎯 Generate Editable Timeline & Scenes"}
                   </span>
                 </>
@@ -396,10 +390,10 @@ export default function Home() {
           <div className="bg-slate-900/30 border border-slate-800/60 rounded-2xl p-4 space-y-1.5">
             <div className="flex items-center gap-2 text-indigo-400 text-xs font-bold uppercase tracking-wider">
               <Clock className="w-4 h-4" />
-              <span>Auto-Interval Mode (Audio)</span>
+              <span>Audio Scene Mode</span>
             </div>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Upload voiceover audio. Whisper AI transcribes and slices it into fixed blocks (e.g. 5s) for reels and shorts.
+              Upload voiceover audio. AI transcribes and naturally groups it into video scene cuts based on pauses and sentences.
             </p>
           </div>
 
@@ -409,7 +403,7 @@ export default function Home() {
               <span>Script Timeline Mode (No Audio)</span>
             </div>
             <p className="text-xs text-slate-400 leading-relaxed">
-              No audio needed. Paste script with &ldquo;|&rdquo; delimiters to generate scenes, then freely edit timestamps and durations manually!
+              No audio needed. Paste script with &ldquo;|&rdquo; delimiters to generate scenes, then freely edit timestamps manually!
             </p>
           </div>
         </div>

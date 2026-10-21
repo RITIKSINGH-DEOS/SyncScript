@@ -1,27 +1,19 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { FileDropzone } from "@/components/FileDropzone";
-import { MarkerTab } from "@/components/MarkerTab";
 import { ResultViewer } from "@/components/ResultViewer";
 import { ChunkingProgress } from "@/components/ChunkingProgress";
-import { FormattedTimestampBlock, ProcessingMode, WhisperWord, WhisperSegment } from "@/types/transcription";
+import { FormattedTimestampBlock, WhisperWord, WhisperSegment } from "@/types/transcription";
 import { chunkAudioFile, AudioChunk } from "@/lib/audio-chunker";
 import { groupWordsByNaturalSpeech } from "@/lib/interval-grouper";
-import { generateInlineScript, reconstructInlineScriptFromBlocks } from "@/lib/inline-script-formatter";
-import { Clock, Tag, Wand2, Sparkles, Layers, AlertCircle } from "lucide-react";
+import { reconstructInlineScriptFromBlocks } from "@/lib/inline-script-formatter";
+import { Wand2, Sparkles, Layers, AlertCircle, Headphones } from "lucide-react";
 
 export default function Home() {
-  const [activeMode, setActiveMode] = useState<ProcessingMode>("interval");
-  
-  // Mode 1: Audio state (Natural scene detection, no manual seconds!)
+  // Audio state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  
-  // Mode 2: Script state (No audio needed!)
-  const [markerSymbol, setMarkerSymbol] = useState<string>("|");
-  const [scriptText, setScriptText] = useState<string>("");
-  const [defaultDuration, setDefaultDuration] = useState<number>(5);
-  
+
   // Pipeline & Processing State
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [chunkProgress, setChunkProgress] = useState<number>(0);
@@ -33,22 +25,6 @@ export default function Home() {
   const [formattedOutput, setFormattedOutput] = useState<string>("");
   const [inlineScriptOutput, setInlineScriptOutput] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [warningMessage, setWarningMessage] = useState<string | null>(null);
-
-  // Real-time symbol check for Marker mode
-  useEffect(() => {
-    if (activeMode === "marker" && scriptText.trim() && markerSymbol) {
-      if (!scriptText.includes(markerSymbol)) {
-        setWarningMessage(
-          `Notice: Your script does not contain "${markerSymbol}". Insert "${markerSymbol}" between scenes to define timeline cuts.`
-        );
-      } else {
-        setWarningMessage(null);
-      }
-    } else {
-      setWarningMessage(null);
-    }
-  }, [activeMode, scriptText, markerSymbol]);
 
   // Synchronize formatted text output whenever resultBlocks change
   const handleBlocksChange = (updatedBlocks: FormattedTimestampBlock[]) => {
@@ -63,41 +39,6 @@ export default function Home() {
   const handleGenerate = async () => {
     setErrorMessage(null);
 
-    // MODE 2: Script Timeline Mode (NO AUDIO NEEDED!)
-    if (activeMode === "marker") {
-      if (!scriptText.trim()) {
-        alert("Please paste your script with delimiter symbols (e.g. |) first!");
-        return;
-      }
-
-      setIsProcessing(true);
-      setChunkProgress(20);
-      setChunkStatus("Generating continuous story narrative with inline timestamps...");
-
-      setTimeout(() => {
-        const { inlineOutput, blocks } = generateInlineScript(scriptText, markerSymbol, defaultDuration);
-
-        if (blocks.length === 0) {
-          setIsProcessing(false);
-          setErrorMessage("No valid scenes found. Please insert delimiter symbol between text.");
-          return;
-        }
-
-        setResultBlocks(blocks);
-        const outputText = blocks
-          .map((b) => `[${b.startTime} - ${b.endTime}] ${b.text}`)
-          .join("\n");
-        setFormattedOutput(outputText);
-        setInlineScriptOutput(inlineOutput);
-
-        setChunkProgress(100);
-        setChunkStatus("Story timeline generated! You can copy all in 1 click or edit timestamps below.");
-        setIsProcessing(false);
-      }, 300);
-      return;
-    }
-
-    // MODE 1: Audio Mode (Requires Media File, Natural Sentence & Pause Detection)
     if (!selectedFile) {
       alert("Please upload an audio or video file first!");
       return;
@@ -144,7 +85,7 @@ export default function Home() {
         const words: WhisperWord[] = data.words || [];
         const segments: WhisperSegment[] = data.segments || [];
 
-        // Group into natural speech scene blocks (speech pauses + sentence stops)
+        // Group into natural speech scene blocks (speech pauses + complete sentences)
         const chunkBlocks = groupWordsByNaturalSpeech(
           words,
           segments,
@@ -175,6 +116,7 @@ export default function Home() {
   };
 
   const handleClear = () => {
+    setSelectedFile(null);
     setResultBlocks([]);
     setFormattedOutput("");
     setInlineScriptOutput("");
@@ -198,120 +140,45 @@ export default function Home() {
             Sync<span className="text-indigo-400">Script</span>
           </h1>
           <p className="text-sm sm:text-base text-slate-400 max-w-xl mx-auto leading-relaxed">
-            Generate natural scene timestamps and editable timelines for AI video & image creators.
+            Upload your voiceover to generate natural scene timestamps and formatted scripts for AI video creators.
           </p>
         </header>
 
-        {/* Interactive Mode Switcher (2 Tabs with Smooth Animation) */}
-        <div className="flex justify-center">
-          <div className="inline-flex p-1.5 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl relative">
-            <button
-              onClick={() => {
-                setActiveMode("interval");
-                handleClear();
-              }}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 ${
-                activeMode === "interval"
-                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 scale-[1.02]"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40"
-              }`}
-            >
-              <Clock className="w-4 h-4" />
-              <span>⏱️ Audio Scene Mode</span>
-            </button>
-            <button
-              onClick={() => {
-                setActiveMode("marker");
-                handleClear();
-              }}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 ${
-                activeMode === "marker"
-                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 scale-[1.02]"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40"
-              }`}
-            >
-              <Tag className="w-4 h-4" />
-              <span>🏷️ Script Timeline Mode</span>
-            </button>
-          </div>
-        </div>
-
         {/* Main Work Area Card */}
         <div className="bg-slate-900/40 border border-slate-800/80 rounded-3xl p-6 sm:p-8 backdrop-blur-xl shadow-2xl space-y-6">
-          {/* TAB CONTENT WITH SMOOTH ANIMATED TRANSITION */}
-          <div className="transition-all duration-300 ease-in-out">
-            {activeMode === "interval" ? (
-              <div
-                key="interval-tab-content"
-                className="space-y-5 animate-in fade-in slide-in-from-left-3 duration-300 fill-mode-forwards"
-              >
-                {/* Step 1: Upload */}
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-bold uppercase tracking-wider text-indigo-400">
-                      Step 1: Upload Audio or Video
-                    </span>
-                    <span className="text-xs text-emerald-400 font-medium">Automatic Natural Scene Detection</span>
-                  </div>
-                  <FileDropzone
-                    selectedFile={selectedFile}
-                    onFileSelect={(file) => {
-                      setSelectedFile(file);
-                      setPreparedChunks([]);
-                      setChunkProgress(0);
-                      setChunkStatus("");
-                      setErrorMessage(null);
-                    }}
-                    disabled={isProcessing}
-                  />
-                </div>
-
-                {/* AI Smart Scene Pacing Card */}
-                <div className="flex items-center gap-3 p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs shadow-sm">
-                  <Sparkles className="w-5 h-5 text-indigo-400 flex-shrink-0" />
-                  <div>
-                    <span className="font-semibold text-white">AI Natural Sentence & Pause Detection</span>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
-                      Whisper AI automatically cuts scenes at natural speech pauses and complete sentences. Words and sentences are never cut midway.
-                    </p>
-                  </div>
-                </div>
+          <div className="space-y-5 animate-in fade-in duration-300">
+            {/* Step 1: Upload */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-bold uppercase tracking-wider text-indigo-400">
+                  Step 1: Upload Audio or Video
+                </span>
+                <span className="text-xs text-emerald-400 font-medium">Automatic Natural Scene Detection</span>
               </div>
-            ) : (
-              <div
-                key="marker-tab-content"
-                className="animate-in fade-in slide-in-from-right-3 duration-300 fill-mode-forwards"
-              >
-                {/* Step 1: Paste Marked Script & Set Defaults */}
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-bold uppercase tracking-wider text-indigo-400">
-                      Step 1: Paste Marked Script & Set Defaults
-                    </span>
-                    <span className="text-xs text-emerald-400 font-medium">No audio required • Fully editable</span>
-                  </div>
-
-                  <MarkerTab
-                    marker={markerSymbol}
-                    onMarkerChange={setMarkerSymbol}
-                    scriptText={scriptText}
-                    onScriptChange={setScriptText}
-                    defaultDuration={defaultDuration}
-                    onDefaultDurationChange={setDefaultDuration}
-                    disabled={isProcessing}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Warning Message Toast */}
-          {warningMessage && (
-            <div className="flex items-start gap-2.5 p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs animate-in fade-in duration-200">
-              <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
-              <p>{warningMessage}</p>
+              <FileDropzone
+                selectedFile={selectedFile}
+                onFileSelect={(file) => {
+                  setSelectedFile(file);
+                  setPreparedChunks([]);
+                  setChunkProgress(0);
+                  setChunkStatus("");
+                  setErrorMessage(null);
+                }}
+                disabled={isProcessing}
+              />
             </div>
-          )}
+
+            {/* AI Smart Scene Pacing Card */}
+            <div className="flex items-center gap-3 p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs shadow-sm">
+              <Sparkles className="w-5 h-5 text-indigo-400 flex-shrink-0" />
+              <div>
+                <span className="font-semibold text-white">AI Natural Sentence & Pause Detection</span>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Whisper AI automatically cuts scenes at natural speech pauses and complete sentences. Words and sentences are never cut midway.
+                </p>
+              </div>
+            </div>
+          </div>
 
           {/* Error Message Toast */}
           {errorMessage && (
@@ -321,17 +188,15 @@ export default function Home() {
             </div>
           )}
 
-          {/* Audio Chunking Progress Indicator (Only in Audio Mode) */}
-          {activeMode === "interval" && (
-            <ChunkingProgress
-              progressPercent={chunkProgress}
-              statusText={chunkStatus}
-              isProcessing={isProcessing}
-            />
-          )}
+          {/* Audio Chunking Progress Indicator */}
+          <ChunkingProgress
+            progressPercent={chunkProgress}
+            statusText={chunkStatus}
+            isProcessing={isProcessing}
+          />
 
-          {/* Prepared Chunks Status Badge (Only in Audio Mode) */}
-          {activeMode === "interval" && preparedChunks.length > 0 && !isProcessing && (
+          {/* Prepared Chunks Status Badge */}
+          {preparedChunks.length > 0 && !isProcessing && (
             <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs">
               <Layers className="w-4 h-4 flex-shrink-0" />
               <span>
@@ -346,9 +211,9 @@ export default function Home() {
           <div className="pt-2">
             <button
               onClick={handleGenerate}
-              disabled={isProcessing || (activeMode === "interval" && !selectedFile)}
+              disabled={isProcessing || !selectedFile}
               className={`w-full py-4 px-6 rounded-2xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 transition-all duration-300 shadow-xl ${
-                isProcessing || (activeMode === "interval" && !selectedFile)
+                isProcessing || !selectedFile
                   ? "bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700/50"
                   : "bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white shadow-indigo-500/25 active:scale-[0.99]"
               }`}
@@ -356,27 +221,19 @@ export default function Home() {
               {isProcessing ? (
                 <>
                   <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                  <span>
-                    {activeMode === "interval"
-                      ? "Transcribing & Detecting Natural Scenes..."
-                      : "Generating Editable Timeline..."}
-                  </span>
+                  <span>Transcribing & Detecting Natural Scenes...</span>
                 </>
               ) : (
                 <>
                   <Wand2 className="w-5 h-5" />
-                  <span>
-                    {activeMode === "interval"
-                      ? "⚡ Transcribe & Generate Natural Scenes"
-                      : "🎯 Generate Editable Timeline & Scenes"}
-                  </span>
+                  <span>⚡ Transcribe & Generate Natural Scenes</span>
                 </>
               )}
             </button>
           </div>
         </div>
 
-        {/* Step 3: Result Viewer & Interactive Timeline Editor */}
+        {/* Result Viewer & Interactive Timeline Editor */}
         <ResultViewer
           blocks={resultBlocks}
           formattedOutput={formattedOutput}
@@ -385,25 +242,15 @@ export default function Home() {
           onBlocksChange={handleBlocksChange}
         />
 
-        {/* Mode Quick Guide */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-slate-900/30 border border-slate-800/60 rounded-2xl p-4 space-y-1.5">
-            <div className="flex items-center gap-2 text-indigo-400 text-xs font-bold uppercase tracking-wider">
-              <Clock className="w-4 h-4" />
-              <span>Audio Scene Mode</span>
-            </div>
+        {/* Feature Explainer Card */}
+        <div className="bg-slate-900/30 border border-slate-800/60 rounded-2xl p-4 flex items-start gap-3">
+          <Headphones className="w-5 h-5 text-indigo-400 flex-shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-indigo-400">
+              Natural Speech AI Segmentation
+            </h4>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Upload voiceover audio. AI transcribes and naturally groups it into video scene cuts based on pauses and sentences.
-            </p>
-          </div>
-
-          <div className="bg-slate-900/30 border border-slate-800/60 rounded-2xl p-4 space-y-1.5">
-            <div className="flex items-center gap-2 text-indigo-400 text-xs font-bold uppercase tracking-wider">
-              <Tag className="w-4 h-4" />
-              <span>Script Timeline Mode (No Audio)</span>
-            </div>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              No audio needed. Paste script with &ldquo;|&rdquo; delimiters to generate scenes, then freely edit timestamps manually!
+              Upload any voiceover audio or video. Groq Whisper Large-v3 transcribes speech and naturally segments it into 3.5s - 7s video scene cuts based on breath pauses and full sentences.
             </p>
           </div>
         </div>

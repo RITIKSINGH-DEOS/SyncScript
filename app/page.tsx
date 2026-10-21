@@ -9,7 +9,8 @@ import { ChunkingProgress } from "@/components/ChunkingProgress";
 import { FormattedTimestampBlock, ProcessingMode, WhisperWord } from "@/types/transcription";
 import { chunkAudioFile, AudioChunk } from "@/lib/audio-chunker";
 import { groupWordsByInterval, formatTimeCode } from "@/lib/interval-grouper";
-import { Clock, Tag, Wand2, Sparkles, Layers, AlertCircle, Sparkle } from "lucide-react";
+import { generateInlineScript, reconstructInlineScriptFromBlocks } from "@/lib/inline-script-formatter";
+import { Clock, Tag, Wand2, Sparkles, Layers, AlertCircle } from "lucide-react";
 
 export default function Home() {
   const [activeMode, setActiveMode] = useState<ProcessingMode>("interval");
@@ -32,6 +33,7 @@ export default function Home() {
   // Result & Error State
   const [resultBlocks, setResultBlocks] = useState<FormattedTimestampBlock[]>([]);
   const [formattedOutput, setFormattedOutput] = useState<string>("");
+  const [inlineScriptOutput, setInlineScriptOutput] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [warningMessage, setWarningMessage] = useState<string | null>(null);
 
@@ -57,6 +59,7 @@ export default function Home() {
       .map((b) => `[${b.startTime} - ${b.endTime}] ${b.text}`)
       .join("\n");
     setFormattedOutput(outputText);
+    setInlineScriptOutput(reconstructInlineScriptFromBlocks(updatedBlocks));
   };
 
   const handleGenerate = async () => {
@@ -71,37 +74,26 @@ export default function Home() {
 
       setIsProcessing(true);
       setChunkProgress(20);
-      setChunkStatus("Parsing script scenes...");
+      setChunkStatus("Generating continuous story narrative with inline timestamps...");
 
       setTimeout(() => {
-        const rawSegments = scriptText
-          .split(markerSymbol)
-          .map((s) => s.trim())
-          .filter(Boolean);
+        const { inlineOutput, blocks } = generateInlineScript(scriptText, markerSymbol, defaultDuration);
 
-        if (rawSegments.length === 0) {
+        if (blocks.length === 0) {
           setIsProcessing(false);
           setErrorMessage("No valid scenes found. Please insert delimiter symbol between text.");
           return;
         }
 
-        const generatedBlocks: FormattedTimestampBlock[] = rawSegments.map((seg, idx) => {
-          const startSec = idx * defaultDuration;
-          const endSec = (idx + 1) * defaultDuration;
+        setResultBlocks(blocks);
+        const outputText = blocks
+          .map((b) => `[${b.startTime} - ${b.endTime}] ${b.text}`)
+          .join("\n");
+        setFormattedOutput(outputText);
+        setInlineScriptOutput(inlineOutput);
 
-          return {
-            index: idx + 1,
-            startTime: formatTimeCode(startSec),
-            endTime: formatTimeCode(endSec),
-            startSeconds: startSec,
-            endSeconds: endSec,
-            text: seg,
-          };
-        });
-
-        handleBlocksChange(generatedBlocks);
         setChunkProgress(100);
-        setChunkStatus("Timeline generated! You can directly edit any timestamp below.");
+        setChunkStatus("Story timeline generated! You can copy all in 1 click or edit timestamps below.");
         setIsProcessing(false);
       }, 300);
       return;
@@ -186,6 +178,7 @@ export default function Home() {
   const handleClear = () => {
     setResultBlocks([]);
     setFormattedOutput("");
+    setInlineScriptOutput("");
     setPreparedChunks([]);
     setChunkProgress(0);
     setChunkStatus("");
@@ -383,6 +376,7 @@ export default function Home() {
         <ResultViewer
           blocks={resultBlocks}
           formattedOutput={formattedOutput}
+          inlineScriptOutput={inlineScriptOutput}
           onClear={handleClear}
           onBlocksChange={handleBlocksChange}
         />

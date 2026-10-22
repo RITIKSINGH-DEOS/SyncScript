@@ -166,8 +166,8 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-[#090d16] text-slate-100 py-10 px-4 sm:px-6 lg:px-8 font-sans selection:bg-indigo-500/30 selection:text-indigo-200">
-      <div className="max-w-4xl mx-auto space-y-8">
+    <main className="min-h-screen bg-[#090d16] text-slate-100 py-6 sm:py-10 px-3.5 sm:px-6 lg:px-8 font-sans selection:bg-indigo-500/30 selection:text-indigo-200">
+      <div className="max-w-4xl mx-auto space-y-5 sm:space-y-8">
         {/* Clean Central Header */}
         <header className="text-center space-y-3">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shadow-sm">
@@ -184,15 +184,15 @@ export default function Home() {
         </header>
 
         {/* Main Work Area Card */}
-        <div className="bg-slate-900/40 border border-slate-800/80 rounded-3xl p-6 sm:p-8 backdrop-blur-xl shadow-2xl space-y-6">
-          <div className="space-y-6 animate-in fade-in duration-300">
+        <div className="bg-slate-900/40 border border-slate-800/80 rounded-2xl sm:rounded-3xl p-3.5 sm:p-7 backdrop-blur-xl shadow-2xl space-y-4 sm:space-y-6">
+          <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-300">
             {/* Step 1: Upload Audio */}
             <div>
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold uppercase tracking-wider text-indigo-400">
-                  Step 1: Upload Voiceover Audio / Video
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-indigo-400">
+                  Step 1: Upload Audio or Video
                 </span>
-                <span className="text-xs text-slate-400">MP3, WAV, M4A, MP4</span>
+                <span className="text-[10px] sm:text-xs text-slate-500 font-medium tracking-wide">MP3, WAV, M4A, MP4</span>
               </div>
               <FileDropzone
                 selectedFile={selectedFile}
@@ -207,30 +207,30 @@ export default function Home() {
             </div>
 
             {/* Step 2: Paste Script with Specific Delimiter */}
-            <div className="bg-slate-950/70 border border-slate-800 rounded-2xl p-5 sm:p-6 space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+            <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl sm:rounded-2xl p-3.5 sm:p-5 space-y-3 sm:space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-slate-800/80 pb-2.5">
                 <div>
-                  <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-indigo-400">
-                    <AlignLeft className="w-4 h-4" />
-                    <span>Step 2: Paste Script with Scene Delimiter</span>
+                  <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold uppercase tracking-wider text-indigo-400">
+                    <AlignLeft className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span>Step 2: Script with Cut Markers</span>
                   </div>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Insert &ldquo;{markerSymbol}&rdquo; wherever you want a scene cut. AI will automatically find the exact seconds!
+                  <p className="text-[11px] sm:text-xs text-slate-400 leading-snug mt-0.5">
+                    Insert &ldquo;{markerSymbol}&rdquo; wherever you want a scene cut.
                   </p>
                 </div>
 
                 {/* Marker Symbol & Demo loader */}
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-700/80 rounded-xl px-2.5 py-1 shadow-inner">
-                    <Tag className="w-3.5 h-3.5 text-indigo-400" />
-                    <span className="text-xs text-slate-400">Cut Symbol:</span>
+                <div className="flex items-center justify-between sm:justify-end gap-2">
+                  <div className="inline-flex items-center gap-1.5 bg-slate-900 border border-slate-700/80 rounded-lg px-2 py-1 shadow-inner">
+                    <Tag className="w-3 h-3 text-indigo-400 flex-shrink-0" />
+                    <span className="text-[11px] text-slate-400">Marker:</span>
                     <input
                       type="text"
                       value={markerSymbol}
                       onChange={(e) => setMarkerSymbol(e.target.value || "|")}
                       disabled={isProcessing}
                       maxLength={3}
-                      className="w-7 text-center font-mono font-bold text-indigo-400 bg-transparent focus:outline-none text-xs"
+                      className="w-5 text-center font-mono font-bold text-indigo-300 bg-transparent focus:outline-none text-[11px]"
                       title="Symbol used in script to split scenes (e.g. |)"
                     />
                   </div>
@@ -239,9 +239,9 @@ export default function Home() {
                     type="button"
                     onClick={insertDemoScript}
                     disabled={isProcessing}
-                    className="text-xs text-indigo-400 hover:text-indigo-300 underline underline-offset-2 transition-colors flex-shrink-0"
+                    className="text-[11px] sm:text-xs text-indigo-300 hover:text-white font-medium px-2.5 py-1 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 transition-all whitespace-nowrap active:scale-95"
                   >
-                    Load Sample Script
+                    Load Sample
                   </button>
                 </div>
               </div>
@@ -251,16 +251,16 @@ export default function Home() {
                 value={scriptText}
                 onChange={(e) => setScriptText(e.target.value)}
                 disabled={isProcessing}
-                rows={8}
+                rows={5}
                 placeholder="Example: Imagine living thousands of years ago | There's no supermarket | No food labels | No scientific laboratory to tell you what's safe to eat..."
-                className="w-full min-h-[200px] sm:min-h-[250px] bg-slate-900/90 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 rounded-xl p-4 text-xs sm:text-sm text-slate-200 placeholder-slate-500 transition-all resize-y leading-relaxed font-sans shadow-inner"
+                className="w-full min-h-[140px] sm:min-h-[220px] bg-slate-900/90 border border-slate-800 focus:border-indigo-500/80 focus:ring-1 focus:ring-indigo-500/30 rounded-xl p-3 sm:p-4 text-xs sm:text-sm text-slate-200 placeholder-slate-500 transition-all resize-y leading-relaxed font-sans shadow-inner outline-none"
               />
 
               {/* Informational Guidance */}
-              <div className="flex items-center gap-2 text-[11px] text-slate-400">
-                <Sparkles className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />
+              <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-slate-400">
+                <Sparkles className="w-3 h-3 text-indigo-400 flex-shrink-0" />
                 <span>
-                  <strong>Automatic Speech Match:</strong> You don&apos;t need to guess seconds. Put &ldquo;{markerSymbol}&rdquo; in the script, and AI will replace each symbol with the actual spoken timestamp!
+                  AI automatically detects speech timestamps for each &ldquo;{markerSymbol}&rdquo; cut.
                 </span>
               </div>
             </div>
@@ -282,11 +282,11 @@ export default function Home() {
           />
 
           {/* Action Trigger */}
-          <div className="pt-2">
+          <div className="pt-1">
             <button
               onClick={handleGenerate}
               disabled={isProcessing || !selectedFile}
-              className={`w-full py-4 px-6 rounded-2xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 transition-all duration-300 shadow-xl ${
+              className={`w-full py-2.5 sm:py-3 px-4 sm:px-6 rounded-xl sm:rounded-2xl font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all duration-300 shadow-lg ${
                 isProcessing || !selectedFile
                   ? "bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700/50"
                   : "bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white shadow-indigo-500/25 active:scale-[0.99]"
@@ -294,16 +294,16 @@ export default function Home() {
             >
               {isProcessing ? (
                 <>
-                  <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                  <span>Transcribing Audio & Calculating Spoken Timestamps...</span>
+                  <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin flex-shrink-0" />
+                  <span className="truncate">Processing Audio & Timestamps...</span>
                 </>
               ) : (
                 <>
-                  <Wand2 className="w-5 h-5" />
-                  <span>
+                  <Wand2 className="w-4 h-4 flex-shrink-0" />
+                  <span className="truncate">
                     {scriptText.trim().includes(markerSymbol)
-                      ? "⚡ Calculate Spoken Timestamps for Script Markers"
-                      : "⚡ Transcribe & Generate Natural Timestamps"}
+                      ? "Calculate Script Timestamps"
+                      : "Generate Natural Timestamps"}
                   </span>
                 </>
               )}
@@ -321,14 +321,14 @@ export default function Home() {
         />
 
         {/* Feature Explainer Card */}
-        <div className="bg-slate-900/30 border border-slate-800/60 rounded-2xl p-4 flex items-start gap-3">
-          <Sparkle className="w-5 h-5 text-indigo-400 flex-shrink-0 mt-0.5" />
-          <div className="space-y-1">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-indigo-400">
+        <div className="bg-slate-900/30 border border-slate-800/60 rounded-xl sm:rounded-2xl p-3 sm:p-4 flex items-center sm:items-start gap-2.5 sm:gap-3">
+          <Sparkle className="w-4 h-4 text-indigo-400 flex-shrink-0" />
+          <div className="space-y-0.5 min-w-0">
+            <h4 className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-indigo-400 truncate">
               Speech-to-Script Forced Alignment
             </h4>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Never manually scrub audio timelines again. Drop your voiceover, paste your marked script with &ldquo;|&rdquo;, and AI will automatically identify when each scene starts in the audio and embed the exact timestamps.
+            <p className="text-[11px] sm:text-xs text-slate-400 leading-snug line-clamp-2">
+              AI automatically matches script cut markers with spoken words in the voiceover — zero manual timeline scrubbing.
             </p>
           </div>
         </div>

@@ -157,23 +157,24 @@ export function FileDropzone({ selectedFile, onFileSelect, disabled = false }: F
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
-          className={`relative border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all duration-200 ${
+          className={`relative border border-dashed rounded-xl sm:rounded-2xl p-4 sm:p-7 text-center cursor-pointer transition-all duration-200 ${
             isDragging
               ? "border-indigo-400 bg-indigo-500/10 scale-[1.01]"
               : "border-slate-700 hover:border-slate-500 bg-slate-900/60 hover:bg-slate-900/90"
           } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
         >
-          <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
-            <UploadCloud className="w-7 h-7" />
+          <div className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 sm:mb-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+            <UploadCloud className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
-          <h3 className="text-base font-semibold text-white mb-1">
-            Drag & drop your audio or video file
+          <h3 className="text-xs sm:text-sm font-semibold text-white mb-1">
+            <span className="sm:hidden">Tap to choose audio or video</span>
+            <span className="hidden sm:inline">Drag &amp; drop audio or video file</span>
           </h3>
-          <p className="text-sm text-slate-400 mb-3">
-            Supports MP3, WAV, M4A, AAC, OGG, MP4, MOV (Auto-chunked if long)
+          <p className="text-[11px] sm:text-xs text-slate-400 mb-2.5">
+            Supports MP3, WAV, M4A, MP4 (Auto-chunked)
           </p>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-800 text-slate-300 border border-slate-700">
-            Or click to browse from device
+          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-lg text-[11px] sm:text-xs font-medium bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+            Browse Files
           </span>
         </div>
       ) : (

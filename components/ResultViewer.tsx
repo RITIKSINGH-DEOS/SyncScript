@@ -145,7 +145,7 @@ export function ResultViewer({
   if (!blocks || blocks.length === 0) return null;
 
   return (
-    <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 space-y-5 animate-in fade-in duration-300">
+    <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-6 space-y-4 sm:space-y-5 animate-in fade-in duration-300">
       {/* Header with actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
         <div>
@@ -159,9 +159,9 @@ export function ResultViewer({
         </div>
 
         {/* View Switcher & Action buttons */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 w-full sm:w-auto">
           {/* View Mode Selector: Ultra-Smooth Animated Sliding Pill */}
-          <div className="bg-slate-950 p-1 rounded-xl border border-slate-800 grid grid-cols-2 relative shadow-inner w-56 select-none overflow-hidden">
+          <div className="bg-slate-950 p-1 rounded-xl border border-slate-800 grid grid-cols-2 relative shadow-inner w-full max-w-[260px] sm:w-56 select-none overflow-hidden mx-auto sm:mx-0">
             {/* The Silky Sliding Pill Indicator */}
             <div
               className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-lg bg-indigo-600 shadow-lg shadow-indigo-600/40 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
@@ -196,7 +196,9 @@ export function ResultViewer({
             </button>
           </div>
 
-          {/* Big Copy Button */}
+          {/* Export Action buttons */}
+          <div className="flex items-center justify-center gap-2 w-full sm:w-auto">
+            {/* Big Copy Button */}
           <button
             onClick={handleCopy}
             className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all duration-200 shadow-lg shadow-indigo-600/30 active:scale-95"
@@ -232,6 +234,7 @@ export function ResultViewer({
             <Subtitles className="w-3.5 h-3.5 text-indigo-400" />
             <span>.SRT</span>
           </button>
+          </div>
         </div>
       </div>
 

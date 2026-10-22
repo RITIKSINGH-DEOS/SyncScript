@@ -178,44 +178,48 @@ export function FileDropzone({ selectedFile, onFileSelect, disabled = false }: F
           </span>
         </div>
       ) : (
-        <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 space-y-3">
+        <div className="bg-slate-950/80 border border-slate-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 flex-shrink-0">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 flex-shrink-0">
                 {selectedFile.type.startsWith("video/") || selectedFile.name.endsWith(".mp4") ? (
-                  <FileVideo className="w-6 h-6" />
+                  <FileVideo className="w-5 h-5" />
                 ) : (
-                  <Music className="w-6 h-6" />
+                  <Music className="w-5 h-5" />
                 )}
               </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold text-white truncate max-w-xs sm:max-w-md">
+              <div className="min-w-0 flex-1">
+
+                <p className="text-xs sm:text-sm font-semibold text-white truncate">
                     {selectedFile.name}
                   </p>
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                </div>
-                <div className="flex items-center gap-2 text-xs text-slate-400 mt-0.5">
-                  <span>{formatFileSize(selectedFile.size)}</span>
+
+
+                <div className="flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs text-slate-400 mt-0.5 whitespace-nowrap">
+                  <span className="whitespace-nowrap">{formatFileSize(selectedFile.size)}</span>
                   {durationStr && (
                     <>
                       <span>•</span>
-                      <span className="text-indigo-400 font-medium">{durationStr} duration</span>
+                      <span className="text-indigo-400 font-medium whitespace-nowrap">{durationStr}</span>
                     </>
                   )}
                   <span>•</span>
-                  <span className="text-emerald-400">Ready</span>
+                  <span className="inline-flex items-center gap-1 text-emerald-400 font-medium whitespace-nowrap">
+                    <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span>Ready</span>
+                  </span>
                 </div>
+
               </div>
             </div>
 
             <button
               onClick={() => onFileSelect(null)}
               disabled={disabled}
-              className="p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition-colors flex-shrink-0"
+              className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors flex-shrink-0"
               title="Remove file"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
 
@@ -255,6 +259,7 @@ export function FileDropzone({ selectedFile, onFileSelect, disabled = false }: F
                   <span className="text-slate-400">{formatAudioTime(duration)}</span>
                 </div>
 
+
                 {/* Sleek Custom Range Track */}
                 <div className="flex-1 relative flex items-center group">
                   <input
@@ -267,6 +272,7 @@ export function FileDropzone({ selectedFile, onFileSelect, disabled = false }: F
                     className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500 focus:outline-none transition-all group-hover:h-2"
                   />
                 </div>
+
 
                 {/* Mute Toggle */}
                 <button

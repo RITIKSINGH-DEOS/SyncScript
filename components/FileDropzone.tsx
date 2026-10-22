@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useState, useEffect } from "react";
-import { UploadCloud, Music, FileVideo, X, CheckCircle2, Play, Volume2 } from "lucide-react";
+import { UploadCloud, Music, FileVideo, X, CheckCircle2, Play, Pause, Volume2, VolumeX } from "lucide-react";
 
 interface FileDropzoneProps {
   selectedFile: File | null;
@@ -15,15 +15,25 @@ export function FileDropzone({ selectedFile, onFileSelect, disabled = false }: F
   const [durationStr, setDurationStr] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Custom Audio Player State
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [isMuted, setIsMuted] = useState(false);
+
   useEffect(() => {
     if (selectedFile) {
       const url = URL.createObjectURL(selectedFile);
       setAudioUrl(url);
+      setIsPlaying(false);
+      setCurrentTime(0);
 
       const audio = document.createElement("audio");
       audio.src = url;
       audio.onloadedmetadata = () => {
         const d = audio.duration;
+        setDuration(d);
         if (d && !isNaN(d)) {
           const m = Math.floor(d / 60);
           const s = Math.floor(d % 60);
@@ -39,8 +49,54 @@ export function FileDropzone({ selectedFile, onFileSelect, disabled = false }: F
     } else {
       setAudioUrl(null);
       setDurationStr(null);
+      setIsPlaying(false);
+      setCurrentTime(0);
+      setDuration(0);
     }
   }, [selectedFile]);
+
+  const togglePlay = () => {
+    if (!audioRef.current) return;
+    if (isPlaying) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play();
+    }
+  };
+
+  const handleTimeUpdate = () => {
+    if (!audioRef.current) return;
+    setCurrentTime(audioRef.current.currentTime);
+  };
+
+  const handleLoadedMetadata = () => {
+    if (!audioRef.current) return;
+    const d = audioRef.current.duration;
+    if (d && !isNaN(d)) {
+      setDuration(d);
+    }
+  };
+
+  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const time = Number(e.target.value);
+    setCurrentTime(time);
+    if (audioRef.current) {
+      audioRef.current.currentTime = time;
+    }
+  };
+
+  const toggleMute = () => {
+    if (!audioRef.current) return;
+    audioRef.current.muted = !isMuted;
+    setIsMuted(!isMuted);
+  };
+
+  const formatAudioTime = (secs: number) => {
+    if (!secs || isNaN(secs)) return "0:00";
+    const m = Math.floor(secs / 60);
+    const s = Math.floor(secs % 60);
+    return `${m}:${String(s).padStart(2, "0")}`;
+  };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -121,10 +177,10 @@ export function FileDropzone({ selectedFile, onFileSelect, disabled = false }: F
           </span>
         </div>
       ) : (
-        <div className="border border-slate-800 bg-slate-900/90 rounded-2xl p-5 space-y-3">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-4 min-w-0">
-              <div className="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex-shrink-0 flex items-center justify-center text-indigo-400">
+        <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 flex-shrink-0">
                 {selectedFile.type.startsWith("video/") || selectedFile.name.endsWith(".mp4") ? (
                   <FileVideo className="w-6 h-6" />
                 ) : (
@@ -162,18 +218,69 @@ export function FileDropzone({ selectedFile, onFileSelect, disabled = false }: F
             </button>
           </div>
 
-          {/* Inline Audio Player Preview */}
+          {/* Custom Sleek Dark Audio Player Preview */}
           {audioUrl && !selectedFile.type.startsWith("video/") && (
-            <div className="pt-2 border-t border-slate-800/80 flex items-center gap-3">
-              <div className="flex items-center gap-1.5 text-xs text-slate-400 flex-shrink-0">
-                <Volume2 className="w-3.5 h-3.5 text-indigo-400" />
-                <span>Preview:</span>
-              </div>
+            <div className="pt-2 border-t border-slate-800/80">
               <audio
-                controls
+                ref={audioRef}
                 src={audioUrl}
-                className="w-full h-8 accent-indigo-500 rounded-lg focus:outline-none"
+                onTimeUpdate={handleTimeUpdate}
+                onLoadedMetadata={handleLoadedMetadata}
+                onEnded={() => setIsPlaying(false)}
+                onPlay={() => setIsPlaying(true)}
+                onPause={() => setIsPlaying(false)}
+                className="hidden"
               />
+
+              <div className="bg-slate-900/90 border border-slate-800 rounded-xl px-3.5 py-2.5 flex items-center gap-3 shadow-inner">
+                {/* Play / Pause Toggle with Subtle Glow */}
+                <button
+                  type="button"
+                  onClick={togglePlay}
+                  className="w-8 h-8 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center flex-shrink-0 shadow-md shadow-indigo-600/30 transition-all active:scale-95"
+                  title={isPlaying ? "Pause audio" : "Play preview"}
+                >
+                  {isPlaying ? (
+                    <Pause className="w-3.5 h-3.5 fill-white" />
+                  ) : (
+                    <Play className="w-3.5 h-3.5 fill-white ml-0.5" />
+                  )}
+                </button>
+
+                {/* Timestamp Display */}
+                <div className="font-mono text-xs text-indigo-300 font-semibold flex-shrink-0 min-w-[70px]">
+                  <span>{formatAudioTime(currentTime)}</span>
+                  <span className="text-slate-500 mx-1">/</span>
+                  <span className="text-slate-400">{formatAudioTime(duration)}</span>
+                </div>
+
+                {/* Sleek Custom Range Track */}
+                <div className="flex-1 relative flex items-center group">
+                  <input
+                    type="range"
+                    min={0}
+                    max={duration || 100}
+                    step={0.1}
+                    value={currentTime}
+                    onChange={handleSeek}
+                    className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500 focus:outline-none transition-all group-hover:h-2"
+                  />
+                </div>
+
+                {/* Mute Toggle */}
+                <button
+                  type="button"
+                  onClick={toggleMute}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors flex-shrink-0"
+                  title={isMuted ? "Unmute" : "Mute"}
+                >
+                  {isMuted ? (
+                    <VolumeX className="w-4 h-4 text-rose-400" />
+                  ) : (
+                    <Volume2 className="w-4 h-4 text-indigo-400" />
+                  )}
+                </button>
+              </div>
             </div>
           )}
         </div>

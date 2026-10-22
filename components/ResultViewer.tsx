@@ -20,7 +20,7 @@ export function ResultViewer({
   onBlocksChange,
 }: ResultViewerProps) {
   const [copied, setCopied] = useState(false);
-  // Default view is "inline" (matching the user's desired story paragraph format)
+  // Default view is "inline" (continuous story narrative with timestamps)
   const [viewMode, setViewMode] = useState<"inline" | "cards">("inline");
 
   // Choose the best text to copy based on active view mode
@@ -160,13 +160,13 @@ export function ResultViewer({
 
         {/* View Switcher & Action buttons */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* View Mode Selector: Clean 2-Option Switcher */}
-          <div className="bg-slate-950 p-1 rounded-xl border border-slate-800 flex items-center shadow-inner">
+          {/* View Mode Selector: Ultra-Smooth Animated Pill Switcher */}
+          <div className="bg-slate-950/90 p-1 rounded-xl border border-slate-800 flex items-center shadow-inner relative">
             <button
               onClick={() => setViewMode("inline")}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all duration-300 ${
+              className={`relative px-4 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all duration-300 ease-out ${
                 viewMode === "inline"
-                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30 scale-[1.02]"
+                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 font-bold scale-[1.02]"
                   : "text-slate-400 hover:text-white hover:bg-slate-900/60"
               }`}
               title="Continuous narrative with (0:00) timestamps inline"
@@ -176,9 +176,9 @@ export function ResultViewer({
             </button>
             <button
               onClick={() => setViewMode("cards")}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all duration-300 ${
+              className={`relative px-4 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all duration-300 ease-out ${
                 viewMode === "cards"
-                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30 scale-[1.02]"
+                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 font-bold scale-[1.02]"
                   : "text-slate-400 hover:text-white hover:bg-slate-900/60"
               }`}
               title="Edit individual timestamps manually"
@@ -227,13 +227,13 @@ export function ResultViewer({
         </div>
       </div>
 
-      {/* Output Content with Smooth Transition */}
-      <div className="transition-all duration-300 ease-in-out">
+      {/* Output Content with Premium Smooth Animated Transition */}
+      <div className="relative min-h-[14rem] transition-all duration-300 ease-in-out">
         {viewMode === "inline" ? (
           /* The Exact Inline Story Paragraph Format requested by user */
           <div
             key="inline-story-view"
-            className="animate-in fade-in slide-in-from-bottom-2 duration-300 bg-slate-950 border border-slate-800 rounded-xl p-5 max-h-[30rem] overflow-y-auto font-sans text-sm sm:text-base text-slate-200 leading-relaxed tracking-normal select-all whitespace-pre-wrap selection:bg-indigo-500/40 shadow-inner"
+            className="animate-in fade-in zoom-in-[0.99] duration-300 ease-out bg-slate-950 border border-slate-800 rounded-xl p-5 sm:p-6 max-h-[30rem] overflow-y-auto font-sans text-sm sm:text-base text-slate-200 leading-relaxed tracking-normal select-all whitespace-pre-wrap selection:bg-indigo-500/40 shadow-inner"
           >
             {inlineScriptOutput || formattedOutput}
           </div>
@@ -241,7 +241,7 @@ export function ResultViewer({
           /* Interactive Card Editor with Smooth Animation */
           <div
             key="cards-editor-view"
-            className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-3 max-h-[28rem] overflow-y-auto pr-1"
+            className="animate-in fade-in zoom-in-[0.99] duration-300 ease-out space-y-3 max-h-[28rem] overflow-y-auto pr-1"
           >
             {blocks.map((block, i) => (
               <div

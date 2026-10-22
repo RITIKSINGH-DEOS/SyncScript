@@ -9,7 +9,7 @@ import { chunkAudioFile, AudioChunk } from "@/lib/audio-chunker";
 import { groupWordsByNaturalSpeech } from "@/lib/interval-grouper";
 import { alignScriptWithWords } from "@/lib/marker-aligner";
 import { reconstructInlineScriptFromBlocks } from "@/lib/inline-script-formatter";
-import { Wand2, Sparkles, Layers, AlertCircle, Tag, AlignLeft, Sparkle } from "lucide-react";
+import { Wand2, Sparkles, AlertCircle, Tag, AlignLeft, Sparkle } from "lucide-react";
 
 export default function Home() {
   // Audio state
@@ -23,7 +23,6 @@ export default function Home() {
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [chunkProgress, setChunkProgress] = useState<number>(0);
   const [chunkStatus, setChunkStatus] = useState<string>("");
-  const [preparedChunks, setPreparedChunks] = useState<AudioChunk[]>([]);
 
   // Result & Error State
   const [resultBlocks, setResultBlocks] = useState<FormattedTimestampBlock[]>([]);
@@ -59,8 +58,6 @@ export default function Home() {
         setChunkProgress(Math.min(percent, 40));
         setChunkStatus(status);
       });
-
-      setPreparedChunks(chunks);
 
       const allWords: WhisperWord[] = [];
       const allSegments: WhisperSegment[] = [];
@@ -163,7 +160,6 @@ export default function Home() {
     setResultBlocks([]);
     setFormattedOutput("");
     setInlineScriptOutput("");
-    setPreparedChunks([]);
     setChunkProgress(0);
     setChunkStatus("");
     setErrorMessage(null);
@@ -202,7 +198,6 @@ export default function Home() {
                 selectedFile={selectedFile}
                 onFileSelect={(file) => {
                   setSelectedFile(file);
-                  setPreparedChunks([]);
                   setChunkProgress(0);
                   setChunkStatus("");
                   setErrorMessage(null);
@@ -212,7 +207,7 @@ export default function Home() {
             </div>
 
             {/* Step 2: Paste Script with Specific Delimiter */}
-            <div className="bg-slate-950/70 border border-slate-800 rounded-2xl p-5 space-y-4">
+            <div className="bg-slate-950/70 border border-slate-800 rounded-2xl p-5 sm:p-6 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
                 <div>
                   <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-indigo-400">
@@ -226,7 +221,7 @@ export default function Home() {
 
                 {/* Marker Symbol & Demo loader */}
                 <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-700/80 rounded-xl px-2.5 py-1">
+                  <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-700/80 rounded-xl px-2.5 py-1 shadow-inner">
                     <Tag className="w-3.5 h-3.5 text-indigo-400" />
                     <span className="text-xs text-slate-400">Cut Symbol:</span>
                     <input
@@ -251,14 +246,14 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Textarea */}
+              {/* Generous, comfortable, large Textarea */}
               <textarea
                 value={scriptText}
                 onChange={(e) => setScriptText(e.target.value)}
                 disabled={isProcessing}
-                rows={4}
+                rows={8}
                 placeholder="Example: Imagine living thousands of years ago | There's no supermarket | No food labels | No scientific laboratory to tell you what's safe to eat..."
-                className="w-full bg-slate-900/80 border border-slate-800 rounded-xl p-3.5 text-xs sm:text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors resize-y leading-relaxed font-sans"
+                className="w-full min-h-[200px] sm:min-h-[250px] bg-slate-900/90 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 rounded-xl p-4 text-xs sm:text-sm text-slate-200 placeholder-slate-500 transition-all resize-y leading-relaxed font-sans shadow-inner"
               />
 
               {/* Informational Guidance */}
@@ -285,18 +280,6 @@ export default function Home() {
             statusText={chunkStatus}
             isProcessing={isProcessing}
           />
-
-          {/* Prepared Chunks Status Badge */}
-          {preparedChunks.length > 0 && !isProcessing && (
-            <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs">
-              <Layers className="w-4 h-4 flex-shrink-0" />
-              <span>
-                <strong>Pipeline Ready:</strong> {preparedChunks.length}{" "}
-                {preparedChunks.length === 1 ? "Audio stream" : "Audio chunks (4-min slices)"}{" "}
-                prepared with continuous timeline offsets.
-              </span>
-            </div>
-          )}
 
           {/* Action Trigger */}
           <div className="pt-2">

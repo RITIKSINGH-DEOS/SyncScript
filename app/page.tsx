@@ -7,12 +7,17 @@ import { ChunkingProgress } from "@/components/ChunkingProgress";
 import { FormattedTimestampBlock, WhisperWord, WhisperSegment } from "@/types/transcription";
 import { chunkAudioFile, AudioChunk } from "@/lib/audio-chunker";
 import { groupWordsByNaturalSpeech } from "@/lib/interval-grouper";
+import { alignScriptWithWords } from "@/lib/marker-aligner";
 import { reconstructInlineScriptFromBlocks } from "@/lib/inline-script-formatter";
-import { Wand2, Sparkles, Layers, AlertCircle, Headphones } from "lucide-react";
+import { Wand2, Sparkles, Layers, AlertCircle, Tag, AlignLeft, Sparkle } from "lucide-react";
 
 export default function Home() {
   // Audio state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  // Script & Delimiter state (AI Forced Speech-to-Script Alignment)
+  const [scriptText, setScriptText] = useState<string>("");
+  const [markerSymbol, setMarkerSymbol] = useState<string>("|");
 
   // Pipeline & Processing State
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
@@ -40,7 +45,7 @@ export default function Home() {
     setErrorMessage(null);
 
     if (!selectedFile) {
-      alert("Please upload an audio or video file first!");
+      alert("Please upload an audio or video voiceover file first!");
       return;
     }
 
@@ -57,14 +62,15 @@ export default function Home() {
 
       setPreparedChunks(chunks);
 
-      const allIntervalBlocks: FormattedTimestampBlock[] = [];
-      let nextIndex = 1;
+      const allWords: WhisperWord[] = [];
+      const allSegments: WhisperSegment[] = [];
+      let totalAudioDuration = 0;
 
       // Step 2: Sequential Cloud Processing through Groq Whisper API
       for (let i = 0; i < chunks.length; i++) {
         const chunk = chunks[i];
 
-        const stepProgress = 40 + Math.round(((i + 1) / chunks.length) * 50);
+        const stepProgress = 40 + Math.round(((i + 1) / chunks.length) * 45);
         setChunkProgress(stepProgress);
         setChunkStatus(`Transcribing chunk ${i + 1} of ${chunks.length} with Whisper Large-v3...`);
 
@@ -82,30 +88,60 @@ export default function Home() {
           throw new Error(data.error || "Failed to transcribe audio.");
         }
 
-        const words: WhisperWord[] = data.words || [];
-        const segments: WhisperSegment[] = data.segments || [];
+        // Offset word and segment timestamps to global audio timeline
+        const chunkWords: WhisperWord[] = (data.words || []).map((w: WhisperWord) => ({
+          ...w,
+          start: chunk.startSeconds + w.start,
+          end: chunk.startSeconds + w.end,
+        }));
+        allWords.push(...chunkWords);
 
-        // Group into natural speech scene blocks (speech pauses + complete sentences)
-        const chunkBlocks = groupWordsByNaturalSpeech(
-          words,
-          segments,
-          chunk.startSeconds,
-          nextIndex
-        );
-        allIntervalBlocks.push(...chunkBlocks);
-        nextIndex += chunkBlocks.length;
+        const chunkSegments: WhisperSegment[] = (data.segments || []).map((s: WhisperSegment) => ({
+          ...s,
+          start: chunk.startSeconds + s.start,
+          end: chunk.startSeconds + s.end,
+        }));
+        allSegments.push(...chunkSegments);
+
+        totalAudioDuration = Math.max(totalAudioDuration, chunk.endSeconds);
       }
 
-      // Edge Case: No words detected
-      if (allIntervalBlocks.length === 0) {
+      // Edge Case: No words detected in speech
+      if (allWords.length === 0) {
         throw new Error(
           "No spoken words detected in the audio file. Please check audio volume and ensure clear speech."
         );
       }
 
-      handleBlocksChange(allIntervalBlocks);
+      setChunkProgress(90);
+      setChunkStatus("Aligning timestamps with your script...");
+
+      let finalBlocks: FormattedTimestampBlock[] = [];
+
+      // Step 3: Speech-to-Script Alignment vs Natural Speech Detection
+      const hasScriptWithMarkers = scriptText.trim().length > 0 && scriptText.includes(markerSymbol);
+
+      if (hasScriptWithMarkers) {
+        // Mode A: Forced Alignment - Match delimiter positions against real spoken audio
+        finalBlocks = alignScriptWithWords(
+          scriptText,
+          markerSymbol,
+          allWords,
+          totalAudioDuration
+        );
+      } else {
+        // Mode B: Automatic Natural Scene & Pause Detection
+        finalBlocks = groupWordsByNaturalSpeech(
+          allWords,
+          allSegments,
+          0,
+          1
+        );
+      }
+
+      handleBlocksChange(finalBlocks);
       setChunkProgress(100);
-      setChunkStatus("Natural scene cuts & timestamps generated successfully!");
+      setChunkStatus("Timestamps successfully calculated and embedded!");
     } catch (err: unknown) {
       console.error("Transcription pipeline failed:", err);
       const msg = err instanceof Error ? err.message : "Transcription failed.";
@@ -115,8 +151,15 @@ export default function Home() {
     }
   };
 
+  const insertDemoScript = () => {
+    const demo =
+      "Imagine living thousands of years ago | There's no supermarket, no food labels | No scientific laboratory to tell you what's safe to eat | You're hungry, wandering through a misty ancient forest | when you discover a mysterious mushroom growing beneath a tree.";
+    setScriptText(demo);
+  };
+
   const handleClear = () => {
     setSelectedFile(null);
+    setScriptText("");
     setResultBlocks([]);
     setFormattedOutput("");
     setInlineScriptOutput("");
@@ -140,20 +183,20 @@ export default function Home() {
             Sync<span className="text-indigo-400">Script</span>
           </h1>
           <p className="text-sm sm:text-base text-slate-400 max-w-xl mx-auto leading-relaxed">
-            Upload your voiceover to generate natural scene timestamps and formatted scripts for AI video creators.
+            Upload voiceover audio + paste your marked script. AI automatically calculates the exact spoken timestamps for every scene marker!
           </p>
         </header>
 
         {/* Main Work Area Card */}
         <div className="bg-slate-900/40 border border-slate-800/80 rounded-3xl p-6 sm:p-8 backdrop-blur-xl shadow-2xl space-y-6">
-          <div className="space-y-5 animate-in fade-in duration-300">
-            {/* Step 1: Upload */}
+          <div className="space-y-6 animate-in fade-in duration-300">
+            {/* Step 1: Upload Audio */}
             <div>
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-bold uppercase tracking-wider text-indigo-400">
-                  Step 1: Upload Audio or Video
+                  Step 1: Upload Voiceover Audio / Video
                 </span>
-                <span className="text-xs text-emerald-400 font-medium">Automatic Natural Scene Detection</span>
+                <span className="text-xs text-slate-400">MP3, WAV, M4A, MP4</span>
               </div>
               <FileDropzone
                 selectedFile={selectedFile}
@@ -168,14 +211,62 @@ export default function Home() {
               />
             </div>
 
-            {/* AI Smart Scene Pacing Card */}
-            <div className="flex items-center gap-3 p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs shadow-sm">
-              <Sparkles className="w-5 h-5 text-indigo-400 flex-shrink-0" />
-              <div>
-                <span className="font-semibold text-white">AI Natural Sentence & Pause Detection</span>
-                <p className="text-[11px] text-slate-400 mt-0.5">
-                  Whisper AI automatically cuts scenes at natural speech pauses and complete sentences. Words and sentences are never cut midway.
-                </p>
+            {/* Step 2: Paste Script with Specific Delimiter */}
+            <div className="bg-slate-950/70 border border-slate-800 rounded-2xl p-5 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+                <div>
+                  <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-indigo-400">
+                    <AlignLeft className="w-4 h-4" />
+                    <span>Step 2: Paste Script with Scene Delimiter</span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Insert &ldquo;{markerSymbol}&rdquo; wherever you want a scene cut. AI will automatically find the exact seconds!
+                  </p>
+                </div>
+
+                {/* Marker Symbol & Demo loader */}
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-700/80 rounded-xl px-2.5 py-1">
+                    <Tag className="w-3.5 h-3.5 text-indigo-400" />
+                    <span className="text-xs text-slate-400">Cut Symbol:</span>
+                    <input
+                      type="text"
+                      value={markerSymbol}
+                      onChange={(e) => setMarkerSymbol(e.target.value || "|")}
+                      disabled={isProcessing}
+                      maxLength={3}
+                      className="w-7 text-center font-mono font-bold text-indigo-400 bg-transparent focus:outline-none text-xs"
+                      title="Symbol used in script to split scenes (e.g. |)"
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={insertDemoScript}
+                    disabled={isProcessing}
+                    className="text-xs text-indigo-400 hover:text-indigo-300 underline underline-offset-2 transition-colors flex-shrink-0"
+                  >
+                    Load Sample Script
+                  </button>
+                </div>
+              </div>
+
+              {/* Textarea */}
+              <textarea
+                value={scriptText}
+                onChange={(e) => setScriptText(e.target.value)}
+                disabled={isProcessing}
+                rows={4}
+                placeholder="Example: Imagine living thousands of years ago | There's no supermarket | No food labels | No scientific laboratory to tell you what's safe to eat..."
+                className="w-full bg-slate-900/80 border border-slate-800 rounded-xl p-3.5 text-xs sm:text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors resize-y leading-relaxed font-sans"
+              />
+
+              {/* Informational Guidance */}
+              <div className="flex items-center gap-2 text-[11px] text-slate-400">
+                <Sparkles className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />
+                <span>
+                  <strong>Automatic Speech Match:</strong> You don&apos;t need to guess seconds. Put &ldquo;{markerSymbol}&rdquo; in the script, and AI will replace each symbol with the actual spoken timestamp!
+                </span>
               </div>
             </div>
           </div>
@@ -221,12 +312,16 @@ export default function Home() {
               {isProcessing ? (
                 <>
                   <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                  <span>Transcribing & Detecting Natural Scenes...</span>
+                  <span>Transcribing Audio & Calculating Spoken Timestamps...</span>
                 </>
               ) : (
                 <>
                   <Wand2 className="w-5 h-5" />
-                  <span>⚡ Transcribe & Generate Natural Scenes</span>
+                  <span>
+                    {scriptText.trim().includes(markerSymbol)
+                      ? "⚡ Calculate Spoken Timestamps for Script Markers"
+                      : "⚡ Transcribe & Generate Natural Timestamps"}
+                  </span>
                 </>
               )}
             </button>
@@ -244,13 +339,13 @@ export default function Home() {
 
         {/* Feature Explainer Card */}
         <div className="bg-slate-900/30 border border-slate-800/60 rounded-2xl p-4 flex items-start gap-3">
-          <Headphones className="w-5 h-5 text-indigo-400 flex-shrink-0 mt-0.5" />
+          <Sparkle className="w-5 h-5 text-indigo-400 flex-shrink-0 mt-0.5" />
           <div className="space-y-1">
             <h4 className="text-xs font-bold uppercase tracking-wider text-indigo-400">
-              Natural Speech AI Segmentation
+              Speech-to-Script Forced Alignment
             </h4>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Upload any voiceover audio or video. Groq Whisper Large-v3 transcribes speech and naturally segments it into 3.5s - 7s video scene cuts based on breath pauses and full sentences.
+              Never manually scrub audio timelines again. Drop your voiceover, paste your marked script with &ldquo;|&rdquo;, and AI will automatically identify when each scene starts in the audio and embed the exact timestamps.
             </p>
           </div>
         </div>

@@ -184,15 +184,15 @@ export default function Home() {
         </header>
 
         {/* Main Work Area Card */}
-        <div className="bg-slate-900/40 border border-slate-800/80 rounded-3xl p-6 sm:p-8 backdrop-blur-xl shadow-2xl space-y-6">
+        <div className="bg-slate-900/40 border border-slate-800/80 rounded-2xl sm:rounded-3xl p-4 sm:p-8 backdrop-blur-xl shadow-2xl space-y-6">
           <div className="space-y-6 animate-in fade-in duration-300">
             {/* Step 1: Upload Audio */}
             <div>
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2 mb-2.5">
                 <span className="text-xs font-bold uppercase tracking-wider text-indigo-400">
-                  Step 1: Upload Voiceover Audio / Video
+                  Step 1: Upload Audio or Video
                 </span>
-                <span className="text-xs text-slate-400">MP3, WAV, M4A, MP4</span>
+                <span className="text-[11px] sm:text-xs text-slate-400 font-medium">Supports MP3, WAV, M4A, MP4</span>
               </div>
               <FileDropzone
                 selectedFile={selectedFile}
@@ -207,22 +207,22 @@ export default function Home() {
             </div>
 
             {/* Step 2: Paste Script with Specific Delimiter */}
-            <div className="bg-slate-950/70 border border-slate-800 rounded-2xl p-5 sm:p-6 space-y-4">
+            <div className="bg-slate-950/70 border border-slate-800 rounded-2xl p-4 sm:p-6 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
                 <div>
                   <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-indigo-400">
-                    <AlignLeft className="w-4 h-4" />
-                    <span>Step 2: Paste Script with Scene Delimiter</span>
+                    <AlignLeft className="w-4 h-4 flex-shrink-0" />
+                    <span>Step 2: Script with Cut Markers</span>
                   </div>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Insert &ldquo;{markerSymbol}&rdquo; wherever you want a scene cut. AI will automatically find the exact seconds!
+                  <p className="text-[11px] sm:text-xs text-slate-400 leading-snug mt-0.5">
+                    Put &ldquo;{markerSymbol}&rdquo; where you want cuts. AI calculates the exact timing.
                   </p>
                 </div>
 
                 {/* Marker Symbol & Demo loader */}
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2.5 pt-1 sm:pt-0">
                   <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-700/80 rounded-xl px-2.5 py-1 shadow-inner">
-                    <Tag className="w-3.5 h-3.5 text-indigo-400" />
+                    <Tag className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />
                     <span className="text-xs text-slate-400">Cut Symbol:</span>
                     <input
                       type="text"
@@ -239,7 +239,7 @@ export default function Home() {
                     type="button"
                     onClick={insertDemoScript}
                     disabled={isProcessing}
-                    className="text-xs text-indigo-400 hover:text-indigo-300 underline underline-offset-2 transition-colors flex-shrink-0"
+                    className="text-xs text-indigo-400 hover:text-indigo-300 font-medium underline underline-offset-2 transition-colors whitespace-nowrap"
                   >
                     Load Sample Script
                   </button>

@@ -160,26 +160,34 @@ export function ResultViewer({
 
         {/* View Switcher & Action buttons */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* View Mode Selector: Ultra-Smooth Animated Pill Switcher */}
-          <div className="bg-slate-950/90 p-1 rounded-xl border border-slate-800 flex items-center shadow-inner relative">
+          {/* View Mode Selector: Ultra-Smooth Animated Sliding Pill */}
+          <div className="bg-slate-950 p-1 rounded-xl border border-slate-800 grid grid-cols-2 relative shadow-inner w-56 select-none overflow-hidden">
+            {/* The Silky Sliding Pill Indicator */}
+            <div
+              className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-lg bg-indigo-600 shadow-lg shadow-indigo-600/40 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+                viewMode === "inline" ? "left-1" : "left-[calc(50%+2px)]"
+              }`}
+            />
+
+            {/* Button 1: Full Script */}
             <button
+              type="button"
               onClick={() => setViewMode("inline")}
-              className={`relative px-4 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all duration-300 ease-out ${
-                viewMode === "inline"
-                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 font-bold scale-[1.02]"
-                  : "text-slate-400 hover:text-white hover:bg-slate-900/60"
+              className={`relative z-10 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors duration-300 ${
+                viewMode === "inline" ? "text-white font-bold" : "text-slate-400 hover:text-slate-200"
               }`}
               title="Continuous narrative with (0:00) timestamps inline"
             >
               <AlignLeft className="w-3.5 h-3.5" />
               <span>Full Script</span>
             </button>
+
+            {/* Button 2: Edit Times */}
             <button
+              type="button"
               onClick={() => setViewMode("cards")}
-              className={`relative px-4 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all duration-300 ease-out ${
-                viewMode === "cards"
-                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 font-bold scale-[1.02]"
-                  : "text-slate-400 hover:text-white hover:bg-slate-900/60"
+              className={`relative z-10 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors duration-300 ${
+                viewMode === "cards" ? "text-white font-bold" : "text-slate-400 hover:text-slate-200"
               }`}
               title="Edit individual timestamps manually"
             >
@@ -227,13 +235,13 @@ export function ResultViewer({
         </div>
       </div>
 
-      {/* Output Content with Premium Smooth Animated Transition */}
+      {/* Output Content with Silky Smooth Animated Crossfade */}
       <div className="relative min-h-[14rem] transition-all duration-300 ease-in-out">
         {viewMode === "inline" ? (
           /* The Exact Inline Story Paragraph Format requested by user */
           <div
             key="inline-story-view"
-            className="animate-in fade-in zoom-in-[0.99] duration-300 ease-out bg-slate-950 border border-slate-800 rounded-xl p-5 sm:p-6 max-h-[30rem] overflow-y-auto font-sans text-sm sm:text-base text-slate-200 leading-relaxed tracking-normal select-all whitespace-pre-wrap selection:bg-indigo-500/40 shadow-inner"
+            className="animate-in fade-in duration-300 ease-out bg-slate-950 border border-slate-800 rounded-xl p-5 sm:p-6 max-h-[30rem] overflow-y-auto font-sans text-sm sm:text-base text-slate-200 leading-relaxed tracking-normal select-all whitespace-pre-wrap selection:bg-indigo-500/40 shadow-inner"
           >
             {inlineScriptOutput || formattedOutput}
           </div>
@@ -241,7 +249,7 @@ export function ResultViewer({
           /* Interactive Card Editor with Smooth Animation */
           <div
             key="cards-editor-view"
-            className="animate-in fade-in zoom-in-[0.99] duration-300 ease-out space-y-3 max-h-[28rem] overflow-y-auto pr-1"
+            className="animate-in fade-in duration-300 ease-out space-y-3 max-h-[28rem] overflow-y-auto pr-1"
           >
             {blocks.map((block, i) => (
               <div

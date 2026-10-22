@@ -52,6 +52,7 @@ function isWordMatch(scriptWord: string, whisperWord: string): boolean {
 /**
  * Aligns user-provided script segments (split by marker symbol)
  * with Whisper's transcribed word timestamps.
+ * Automatically discovers where each segment is spoken in the audio.
  */
 export function alignScriptWithWords(
   scriptText: string,
@@ -59,7 +60,6 @@ export function alignScriptWithWords(
   transcribedWords: WhisperWord[],
   totalAudioDuration: number = 0
 ): FormattedTimestampBlock[] {
-  // If no words transcribed, return empty
   if (!transcribedWords || transcribedWords.length === 0) {
     return [];
   }
@@ -70,24 +70,13 @@ export function alignScriptWithWords(
     .map((s) => s.trim())
     .filter(Boolean);
 
-  // If user provided no script or no markers, fall back to Whisper word stream
   if (rawSegments.length === 0) {
-    const fullText = transcribedWords.map((w) => w.word).join(" ");
-    return [
-      {
-        index: 1,
-        startTime: formatTimeCode(transcribedWords[0].start),
-        endTime: formatTimeCode(transcribedWords[transcribedWords.length - 1].end),
-        startSeconds: transcribedWords[0].start,
-        endSeconds: transcribedWords[transcribedWords.length - 1].end,
-        text: fullText,
-      },
-    ];
+    return [];
   }
 
   const blocks: FormattedTimestampBlock[] = [];
   let wordCursor = 0;
-  let previousEnd = transcribedWords[0]?.start ?? 0;
+  let previousEnd = 0;
 
   for (let i = 0; i < rawSegments.length; i++) {
     const segmentText = rawSegments[i];
@@ -100,19 +89,20 @@ export function alignScriptWithWords(
 
     let startSec = previousEnd;
     let endSec = previousEnd;
+    let foundStartIndex = -1;
     let foundEndIndex = -1;
 
     // Search forward from current wordCursor for the anchor words
-    // Look ahead window up to segmentWords.length * 2
     const searchLimit = Math.min(
       transcribedWords.length,
-      wordCursor + Math.max(segmentWords.length * 3, 20)
+      wordCursor + Math.max(segmentWords.length * 3, 25)
     );
 
     // 1. Find segment start anchor
     for (let w = wordCursor; w < searchLimit; w++) {
       if (isWordMatch(firstScriptWord, transcribedWords[w].word)) {
         startSec = transcribedWords[w].start;
+        foundStartIndex = w;
         wordCursor = w;
         break;
       }
@@ -121,7 +111,7 @@ export function alignScriptWithWords(
     // 2. Find segment end anchor (search from current wordCursor)
     const endSearchLimit = Math.min(
       transcribedWords.length,
-      wordCursor + Math.max(segmentWords.length * 2, 10)
+      wordCursor + Math.max(segmentWords.length * 2, 15)
     );
 
     // Search backwards from endSearchLimit to find the last matching word in this segment
@@ -143,7 +133,7 @@ export function alignScriptWithWords(
         endSec = transcribedWords[estimatedIndex].end;
         foundEndIndex = estimatedIndex;
       } else {
-        endSec = startSec + segmentWords.length * 0.4;
+        endSec = startSec + Math.max(1.5, segmentWords.length * 0.4);
       }
     }
 
@@ -154,7 +144,12 @@ export function alignScriptWithWords(
       wordCursor += segmentWords.length;
     }
 
-    // Sanity checks: Ensure start < end and chronological progression
+    // First block should snap to 0:00 if near beginning
+    if (i === 0 && startSec <= 1.5) {
+      startSec = 0;
+    }
+
+    // Ensure start < end and chronological progression
     if (startSec < previousEnd && blocks.length > 0) {
       startSec = previousEnd;
     }

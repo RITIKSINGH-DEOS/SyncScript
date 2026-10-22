@@ -102,7 +102,10 @@ export function FileDropzone({ selectedFile, onFileSelect, disabled = false, onE
   };
 
   const isValidMedia = (file: File) => {
-    const validExtensions = [".mp3", ".wav", ".m4a", ".aac", ".ogg", ".opus", ".flac", ".mp4", ".mov", ".mkv", ".webm"];
+    const validExtensions = [
+      ".mp3", ".wav", ".m4a", ".aac", ".ogg", ".opus", ".flac",
+      ".mp4", ".mpeg", ".mpg", ".mpga", ".mov", ".mkv", ".webm"
+    ];
     const ext = file.name.substring(file.name.lastIndexOf(".")).toLowerCase();
     return validExtensions.includes(ext) || file.type.startsWith("audio/") || file.type.startsWith("video/");
   };
@@ -112,7 +115,7 @@ export function FileDropzone({ selectedFile, onFileSelect, disabled = false, onE
       const ext = file.name.includes(".")
         ? file.name.substring(file.name.lastIndexOf(".")).toUpperCase()
         : "UNKNOWN";
-      const warning = `Format "${ext}" is not supported. Please upload an audio or video file (MP3, WAV, M4A, MP4).`;
+      const warning = `Format "${ext}" is not supported. Please upload an audio or video file (MP3, WAV, M4A, MP4, MPEG).`;
       setFormatWarning(warning);
       onError?.(warning);
       if (inputRef.current) inputRef.current.value = "";
@@ -162,7 +165,7 @@ export function FileDropzone({ selectedFile, onFileSelect, disabled = false, onE
       <input
         ref={inputRef}
         type="file"
-        accept="audio/*,video/mp4,video/quicktime,video/webm,.mp3,.wav,.m4a,.aac,.ogg,.opus,.flac,.mp4,.mov,.mkv"
+        accept="audio/*,video/mp4,video/quicktime,video/webm,.mp3,.wav,.m4a,.aac,.ogg,.opus,.flac,.mp4,.mpeg,.mpg,.mpga,.mov,.mkv,.webm"
         onChange={handleInputChange}
         disabled={disabled}
         className="hidden"

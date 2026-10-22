@@ -203,6 +203,7 @@ export default function Home() {
                   setErrorMessage(null);
                 }}
                 disabled={isProcessing}
+                onError={(err) => setErrorMessage(err)}
               />
             </div>
 

@@ -5,6 +5,7 @@ import { FileDropzone } from "@/components/FileDropzone";
 import { ResultViewer } from "@/components/ResultViewer";
 import { ChunkingProgress } from "@/components/ChunkingProgress";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { CursorGlow } from "@/components/CursorGlow";
 import { FormattedTimestampBlock, WhisperWord, WhisperSegment } from "@/types/transcription";
 import { chunkAudioFile, AudioChunk } from "@/lib/audio-chunker";
 import { groupWordsByNaturalSpeech } from "@/lib/interval-grouper";
@@ -172,8 +173,9 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-50 dark:bg-[#090d16] text-slate-800 dark:text-slate-100 py-6 sm:py-10 px-3.5 sm:px-6 lg:px-8 font-sans selection:bg-indigo-500/30 selection:text-indigo-200 transition-colors duration-200">
-      <div className="max-w-4xl mx-auto space-y-5 sm:space-y-8">
+    <main className="relative min-h-screen bg-slate-50 dark:bg-[#090d16] text-slate-800 dark:text-slate-100 py-6 sm:py-10 px-3.5 sm:px-6 lg:px-8 font-sans selection:bg-indigo-500/30 selection:text-indigo-200 transition-colors duration-200 overflow-x-hidden">
+      <CursorGlow />
+      <div className="relative z-10 max-w-4xl mx-auto space-y-5 sm:space-y-8">
         {/* Clean Central Header */}
         <header className="text-center space-y-3 relative">
           {/* Top Row: Pill Badge + Theme Toggle */}

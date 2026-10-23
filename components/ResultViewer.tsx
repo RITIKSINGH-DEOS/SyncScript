@@ -145,15 +145,15 @@ export function ResultViewer({
   if (!blocks || blocks.length === 0) return null;
 
   return (
-    <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-6 space-y-4 sm:space-y-5 animate-in fade-in duration-300">
+    <div className="bg-white/90 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-6 space-y-4 sm:space-y-5 animate-in fade-in duration-300 shadow-xl dark:shadow-2xl transition-colors duration-200">
       {/* Header with actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-            <h3 className="text-base font-semibold text-white">Generated Script with Timestamps</h3>
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+            <h3 className="text-base font-semibold text-slate-900 dark:text-white">Generated Script with Timestamps</h3>
           </div>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             {blocks.length} timestamp points generated. Copy the whole script in 1 click!
           </p>
         </div>
@@ -161,7 +161,7 @@ export function ResultViewer({
         {/* View Switcher & Action buttons */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 w-full sm:w-auto">
           {/* View Mode Selector: Ultra-Smooth Animated Sliding Pill */}
-          <div className="bg-slate-950 p-1 rounded-xl border border-slate-800 grid grid-cols-2 relative shadow-inner w-full max-w-[260px] sm:w-56 select-none overflow-hidden mx-auto sm:mx-0">
+          <div className="bg-slate-100 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800 grid grid-cols-2 relative shadow-inner w-full max-w-[260px] sm:w-56 select-none overflow-hidden mx-auto sm:mx-0">
             {/* The Silky Sliding Pill Indicator */}
             <div
               className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-lg bg-indigo-600 shadow-lg shadow-indigo-600/40 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
@@ -174,7 +174,7 @@ export function ResultViewer({
               type="button"
               onClick={() => setViewMode("inline")}
               className={`relative z-10 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors duration-300 ${
-                viewMode === "inline" ? "text-white font-bold" : "text-slate-400 hover:text-slate-200"
+                viewMode === "inline" ? "text-white font-bold" : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
               }`}
               title="Continuous narrative with (0:00) timestamps inline"
             >
@@ -187,7 +187,7 @@ export function ResultViewer({
               type="button"
               onClick={() => setViewMode("cards")}
               className={`relative z-10 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors duration-300 ${
-                viewMode === "cards" ? "text-white font-bold" : "text-slate-400 hover:text-slate-200"
+                viewMode === "cards" ? "text-white font-bold" : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
               }`}
               title="Edit individual timestamps manually"
             >
@@ -199,41 +199,41 @@ export function ResultViewer({
           {/* Export Action buttons */}
           <div className="flex items-center justify-center gap-2 w-full sm:w-auto">
             {/* Big Copy Button */}
-          <button
-            onClick={handleCopy}
-            className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all duration-200 shadow-lg shadow-indigo-600/30 active:scale-95"
-            title="Copy entire script with timestamps"
-          >
-            {copied ? (
-              <>
-                <Check className="w-3.5 h-3.5 text-emerald-300" />
-                <span>Copied All!</span>
-              </>
-            ) : (
-              <>
-                <Copy className="w-3.5 h-3.5" />
-                <span>Copy All</span>
-              </>
-            )}
-          </button>
+            <button
+              onClick={handleCopy}
+              className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all duration-200 shadow-lg shadow-indigo-600/30 active:scale-95"
+              title="Copy entire script with timestamps"
+            >
+              {copied ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-300" />
+                  <span>Copied All!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>Copy All</span>
+                </>
+              )}
+            </button>
 
-          <button
-            onClick={handleDownloadTxt}
-            className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-medium flex items-center gap-1.5 transition-all duration-200 hover:border-slate-600"
-            title="Download TXT file"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>.TXT</span>
-          </button>
+            <button
+              onClick={handleDownloadTxt}
+              className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 dark:border-slate-700 text-xs font-medium flex items-center gap-1.5 transition-all duration-200 dark:hover:border-slate-600"
+              title="Download TXT file"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>.TXT</span>
+            </button>
 
-          <button
-            onClick={handleDownloadSrt}
-            className="px-3 py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-xs font-medium flex items-center gap-1.5 transition-all duration-200 hover:border-indigo-400/50"
-            title="Download Subtitles (.SRT)"
-          >
-            <Subtitles className="w-3.5 h-3.5 text-indigo-400" />
-            <span>.SRT</span>
-          </button>
+            <button
+              onClick={handleDownloadSrt}
+              className="px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 dark:bg-indigo-600/20 dark:hover:bg-indigo-600/30 dark:text-indigo-300 dark:border-indigo-500/30 text-xs font-medium flex items-center gap-1.5 transition-all duration-200 dark:hover:border-indigo-400/50"
+              title="Download Subtitles (.SRT)"
+            >
+              <Subtitles className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+              <span>.SRT</span>
+            </button>
           </div>
         </div>
       </div>
@@ -244,7 +244,7 @@ export function ResultViewer({
           /* The Exact Inline Story Paragraph Format requested by user */
           <div
             key="inline-story-view"
-            className="animate-in fade-in duration-300 ease-out bg-slate-950 border border-slate-800 rounded-xl p-5 sm:p-6 max-h-[30rem] overflow-y-auto font-sans text-sm sm:text-base text-slate-200 leading-relaxed tracking-normal select-all whitespace-pre-wrap selection:bg-indigo-500/40 shadow-inner"
+            className="animate-in fade-in duration-300 ease-out bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-5 sm:p-6 max-h-[30rem] overflow-y-auto font-sans text-sm sm:text-base text-slate-800 dark:text-slate-200 leading-relaxed tracking-normal select-all whitespace-pre-wrap selection:bg-indigo-500/30 dark:selection:bg-indigo-500/40 shadow-inner transition-colors duration-200"
           >
             {inlineScriptOutput || formattedOutput}
           </div>
@@ -257,28 +257,28 @@ export function ResultViewer({
             {blocks.map((block, i) => (
               <div
                 key={block.index}
-                className="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-slate-700/80 transition-all duration-200 group shadow-sm"
+                className="bg-slate-50/80 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-slate-300 dark:hover:border-slate-700/80 transition-all duration-200 group shadow-sm"
               >
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  <span className="px-2 py-1 rounded-md bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-mono text-xs font-semibold">
+                  <span className="px-2 py-1 rounded-md bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20 font-mono text-xs font-semibold">
                     #{String(block.index).padStart(2, "0")}
                   </span>
 
-                  <div className="flex items-center gap-1 bg-slate-900 border border-slate-700/70 rounded-lg px-2 py-1">
+                  <div className="flex items-center gap-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/70 rounded-lg px-2 py-1 shadow-inner">
                     <input
                       type="text"
                       value={block.startTime}
                       onChange={(e) => handleBlockChange(i, "startTime", e.target.value)}
                       placeholder="0:00"
-                      className="w-12 bg-transparent text-center font-mono text-xs text-indigo-400 font-semibold focus:outline-none focus:text-indigo-300"
+                      className="w-12 bg-transparent text-center font-mono text-xs text-indigo-600 dark:text-indigo-400 font-semibold focus:outline-none focus:text-indigo-700 dark:focus:text-indigo-300"
                     />
-                    <span className="text-slate-500 font-mono text-xs">-</span>
+                    <span className="text-slate-400 dark:text-slate-500 font-mono text-xs">-</span>
                     <input
                       type="text"
                       value={block.endTime}
                       onChange={(e) => handleBlockChange(i, "endTime", e.target.value)}
                       placeholder="0:05"
-                      className="w-12 bg-transparent text-center font-mono text-xs text-indigo-400 font-semibold focus:outline-none focus:text-indigo-300"
+                      className="w-12 bg-transparent text-center font-mono text-xs text-indigo-600 dark:text-indigo-400 font-semibold focus:outline-none focus:text-indigo-700 dark:focus:text-indigo-300"
                     />
                   </div>
                 </div>
@@ -287,14 +287,14 @@ export function ResultViewer({
                   type="text"
                   value={block.text}
                   onChange={(e) => handleBlockChange(i, "text", e.target.value)}
-                  className="w-full bg-transparent text-xs sm:text-sm text-slate-200 font-sans focus:outline-none focus:bg-slate-900/60 rounded px-2 py-1 transition-colors"
+                  className="w-full bg-transparent text-xs sm:text-sm text-slate-800 dark:text-slate-200 font-sans focus:outline-none focus:bg-white dark:focus:bg-slate-900/60 rounded px-2 py-1 transition-colors"
                 />
 
                 {onBlocksChange && blocks.length > 1 && (
                   <button
                     type="button"
                     onClick={() => handleDeleteScene(i)}
-                    className="opacity-60 group-hover:opacity-100 hover:text-rose-400 text-slate-500 p-1 rounded-lg transition-colors flex-shrink-0"
+                    className="opacity-60 group-hover:opacity-100 hover:text-rose-500 dark:hover:text-rose-400 text-slate-400 dark:text-slate-500 p-1 rounded-lg transition-colors flex-shrink-0"
                     title="Delete this scene"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -307,7 +307,7 @@ export function ResultViewer({
               <button
                 type="button"
                 onClick={handleAddScene}
-                className="w-full py-2.5 rounded-xl border border-dashed border-slate-800 hover:border-indigo-500/50 bg-slate-950/40 hover:bg-indigo-500/5 text-xs text-slate-400 hover:text-indigo-300 flex items-center justify-center gap-1.5 transition-all duration-200"
+                className="w-full py-2.5 rounded-xl border border-dashed border-slate-300 dark:border-slate-800 hover:border-indigo-500 bg-slate-50/50 dark:bg-slate-950/40 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/5 text-xs text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-300 flex items-center justify-center gap-1.5 transition-all duration-200"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Add Another Scene Block</span>
@@ -318,13 +318,13 @@ export function ResultViewer({
       </div>
 
       {/* Bottom info */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-2 text-xs text-slate-500 border-t border-slate-800/60">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-2 text-xs text-slate-500 dark:text-slate-400 border-t border-slate-200 dark:border-slate-800/60">
         <span>
           💡 <strong>Tip:</strong> In &ldquo;Full Script&rdquo; view, timestamps (0:00), (0:05)... are embedded inline so you can copy the entire story in one click!
         </span>
         <button
           onClick={onClear}
-          className="text-slate-500 hover:text-slate-300 text-xs transition-colors"
+          className="text-slate-500 hover:text-slate-800 dark:text-slate-500 dark:hover:text-slate-300 text-xs transition-colors"
         >
           Clear output
         </button>

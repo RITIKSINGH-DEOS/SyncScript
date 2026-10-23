@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { FileDropzone } from "@/components/FileDropzone";
 import { ResultViewer } from "@/components/ResultViewer";
 import { ChunkingProgress } from "@/components/ChunkingProgress";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { FormattedTimestampBlock, WhisperWord, WhisperSegment } from "@/types/transcription";
 import { chunkAudioFile, AudioChunk } from "@/lib/audio-chunker";
 import { groupWordsByNaturalSpeech } from "@/lib/interval-grouper";
@@ -30,32 +31,35 @@ export default function Home() {
   const [inlineScriptOutput, setInlineScriptOutput] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Synchronize formatted text output whenever resultBlocks change
   const handleBlocksChange = (updatedBlocks: FormattedTimestampBlock[]) => {
     setResultBlocks(updatedBlocks);
-    const outputText = updatedBlocks
-      .map((b) => `[${b.startTime} - ${b.endTime}] ${b.text}`)
-      .join("\n");
-    setFormattedOutput(outputText);
-    setInlineScriptOutput(reconstructInlineScriptFromBlocks(updatedBlocks));
+
+    // Format 1: Clean Scene Blocks
+    const cleanOutput = updatedBlocks
+      .map((b) => `(${b.startTime} - ${b.endTime})\n${b.text.trim()}`)
+      .join("\n\n");
+    setFormattedOutput(cleanOutput);
+
+    // Format 2: Continuous narrative inline story script
+    const inlineStory = reconstructInlineScriptFromBlocks(updatedBlocks);
+    setInlineScriptOutput(inlineStory);
   };
 
   const handleGenerate = async () => {
-    setErrorMessage(null);
-
     if (!selectedFile) {
-      alert("Please upload an audio or video voiceover file first!");
+      setErrorMessage("Please select an audio file first.");
       return;
     }
 
-    setIsProcessing(true);
-    setChunkProgress(5);
-    setChunkStatus("Initiating Web Audio Pipeline...");
-
     try {
-      // Step 1: Client-Side Audio Extraction & 4-Minute Chunking (16kHz Whisper Encoding)
-      const chunks = await chunkAudioFile(selectedFile, 240, (percent, status) => {
-        setChunkProgress(Math.min(percent, 40));
+      setIsProcessing(true);
+      setErrorMessage(null);
+      setChunkProgress(5);
+      setChunkStatus("Analyzing audio file format and size...");
+
+      // Step 1: Chunk Audio into safe 4-minute 16kHz slices
+      const chunks: AudioChunk[] = await chunkAudioFile(selectedFile, 240, (pct, status) => {
+        setChunkProgress(Math.round(pct * 0.35));
         setChunkStatus(status);
       });
 
@@ -138,11 +142,13 @@ export default function Home() {
 
       handleBlocksChange(finalBlocks);
       setChunkProgress(100);
-      setChunkStatus("Timestamps successfully calculated and embedded!");
+      setChunkStatus("Done! Custom speech-aligned timestamps ready.");
     } catch (err: unknown) {
-      console.error("Transcription pipeline failed:", err);
-      const msg = err instanceof Error ? err.message : "Transcription failed.";
+      console.error(err);
+      const msg = err instanceof Error ? err.message : "An unexpected error occurred.";
       setErrorMessage(msg);
+      setChunkStatus("");
+      setChunkProgress(0);
     } finally {
       setIsProcessing(false);
     }
@@ -166,33 +172,42 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-[#090d16] text-slate-100 py-6 sm:py-10 px-3.5 sm:px-6 lg:px-8 font-sans selection:bg-indigo-500/30 selection:text-indigo-200">
+    <main className="min-h-screen bg-slate-50 dark:bg-[#090d16] text-slate-800 dark:text-slate-100 py-6 sm:py-10 px-3.5 sm:px-6 lg:px-8 font-sans selection:bg-indigo-500/30 selection:text-indigo-200 transition-colors duration-200">
       <div className="max-w-4xl mx-auto space-y-5 sm:space-y-8">
         {/* Clean Central Header */}
-        <header className="text-center space-y-3">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shadow-sm">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>AI Speech & Timeline Alignment • 100% Free</span>
+        <header className="text-center space-y-3 relative">
+          {/* Top Row: Pill Badge + Theme Toggle */}
+          <div className="flex items-center justify-between sm:justify-center relative">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-semibold bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20 shadow-sm">
+              <Sparkles className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
+              <span>AI Speech &amp; Timeline Alignment • 100% Free</span>
+            </div>
+
+            <div className="sm:absolute sm:right-0 sm:top-0">
+              <ThemeToggle />
+            </div>
           </div>
 
-          <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-white">
-            Sync<span className="text-indigo-400">Script</span>
+          <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+            Sync<span className="text-indigo-600 dark:text-indigo-400">Script</span>
           </h1>
-          <p className="text-sm sm:text-base text-slate-400 max-w-xl mx-auto leading-relaxed">
+          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 max-w-xl mx-auto leading-relaxed">
             Upload voiceover audio + paste your marked script. AI automatically calculates the exact spoken timestamps for every scene marker!
           </p>
         </header>
 
         {/* Main Work Area Card */}
-        <div className="bg-slate-900/40 border border-slate-800/80 rounded-2xl sm:rounded-3xl p-3.5 sm:p-7 backdrop-blur-xl shadow-2xl space-y-4 sm:space-y-6">
+        <div className="bg-white/80 dark:bg-slate-900/40 border border-slate-200/90 dark:border-slate-800/80 rounded-2xl sm:rounded-3xl p-3.5 sm:p-7 backdrop-blur-xl shadow-xl dark:shadow-2xl space-y-4 sm:space-y-6 transition-colors duration-200">
           <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-300">
             {/* Step 1: Upload Audio */}
             <div>
               <div className="flex items-center justify-between gap-2 mb-2">
-                <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-indigo-400">
+                <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
                   Step 1: Upload Audio or Video
                 </span>
-                <span className="text-[10px] sm:text-xs text-slate-500 font-medium tracking-wide">MP3, WAV, M4A, MP4</span>
+                <span className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 font-medium tracking-wide">
+                  MP3, WAV, M4A, MP4
+                </span>
               </div>
               <FileDropzone
                 selectedFile={selectedFile}
@@ -208,30 +223,30 @@ export default function Home() {
             </div>
 
             {/* Step 2: Paste Script with Specific Delimiter */}
-            <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl sm:rounded-2xl p-3.5 sm:p-5 space-y-3 sm:space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-slate-800/80 pb-2.5">
+            <div className="bg-slate-50/80 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800/80 rounded-xl sm:rounded-2xl p-3.5 sm:p-5 space-y-3 sm:space-y-4 transition-colors duration-200">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-slate-200 dark:border-slate-800/80 pb-2.5">
                 <div>
-                  <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold uppercase tracking-wider text-indigo-400">
+                  <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
                     <AlignLeft className="w-3.5 h-3.5 flex-shrink-0" />
                     <span>Step 2: Script with Cut Markers</span>
                   </div>
-                  <p className="text-[11px] sm:text-xs text-slate-400 leading-snug mt-0.5">
+                  <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-snug mt-0.5">
                     Insert &ldquo;{markerSymbol}&rdquo; wherever you want a scene cut.
                   </p>
                 </div>
 
                 {/* Marker Symbol & Demo loader */}
                 <div className="flex items-center justify-between sm:justify-end gap-2">
-                  <div className="inline-flex items-center gap-1.5 bg-slate-900 border border-slate-700/80 rounded-lg px-2 py-1 shadow-inner">
-                    <Tag className="w-3 h-3 text-indigo-400 flex-shrink-0" />
-                    <span className="text-[11px] text-slate-400">Marker:</span>
+                  <div className="inline-flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 rounded-lg px-2 py-1 shadow-sm dark:shadow-inner">
+                    <Tag className="w-3 h-3 text-indigo-600 dark:text-indigo-400 flex-shrink-0" />
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400">Marker:</span>
                     <input
                       type="text"
                       value={markerSymbol}
                       onChange={(e) => setMarkerSymbol(e.target.value || "|")}
                       disabled={isProcessing}
                       maxLength={3}
-                      className="w-5 text-center font-mono font-bold text-indigo-300 bg-transparent focus:outline-none text-[11px]"
+                      className="w-5 text-center font-mono font-bold text-indigo-600 dark:text-indigo-300 bg-transparent focus:outline-none text-[11px]"
                       title="Symbol used in script to split scenes (e.g. |)"
                     />
                   </div>
@@ -240,7 +255,7 @@ export default function Home() {
                     type="button"
                     onClick={insertDemoScript}
                     disabled={isProcessing}
-                    className="text-[11px] sm:text-xs text-indigo-300 hover:text-white font-medium px-2.5 py-1 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 transition-all whitespace-nowrap active:scale-95"
+                    className="text-[11px] sm:text-xs text-indigo-600 hover:text-indigo-700 dark:text-indigo-300 dark:hover:text-white font-medium px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20 border border-indigo-200 dark:border-indigo-500/20 transition-all whitespace-nowrap active:scale-95"
                   >
                     Load Sample
                   </button>
@@ -254,12 +269,12 @@ export default function Home() {
                 disabled={isProcessing}
                 rows={5}
                 placeholder="Example: Imagine living thousands of years ago | There's no supermarket | No food labels | No scientific laboratory to tell you what's safe to eat..."
-                className="w-full min-h-[140px] sm:min-h-[220px] bg-slate-900/90 border border-slate-800 focus:border-indigo-500/80 focus:ring-1 focus:ring-indigo-500/30 rounded-xl p-3 sm:p-4 text-xs sm:text-sm text-slate-200 placeholder-slate-500 transition-all resize-y leading-relaxed font-sans shadow-inner outline-none"
+                className="w-full min-h-[140px] sm:min-h-[220px] bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 rounded-xl p-3 sm:p-4 text-xs sm:text-sm text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 transition-all resize-y leading-relaxed font-sans shadow-sm dark:shadow-inner outline-none"
               />
 
               {/* Informational Guidance */}
-              <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-slate-400">
-                <Sparkles className="w-3 h-3 text-indigo-400 flex-shrink-0" />
+              <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400">
+                <Sparkles className="w-3 h-3 text-indigo-500 dark:text-indigo-400 flex-shrink-0" />
                 <span>
                   AI automatically detects speech timestamps for each &ldquo;{markerSymbol}&rdquo; cut.
                 </span>
@@ -269,8 +284,8 @@ export default function Home() {
 
           {/* Error Message Toast */}
           {errorMessage && (
-            <div className="flex items-start gap-3 p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs animate-in fade-in duration-200">
-              <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
+            <div className="flex items-start gap-3 p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-300 text-xs animate-in fade-in duration-200">
+              <AlertCircle className="w-4 h-4 text-rose-500 dark:text-rose-400 flex-shrink-0 mt-0.5" />
               <p className="font-semibold">{errorMessage}</p>
             </div>
           )}
@@ -289,14 +304,14 @@ export default function Home() {
               disabled={isProcessing || !selectedFile}
               className={`w-full py-2.5 sm:py-3 px-4 sm:px-6 rounded-xl sm:rounded-2xl font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all duration-300 shadow-lg ${
                 isProcessing || !selectedFile
-                  ? "bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700/50"
+                  ? "bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed border border-slate-300/80 dark:border-slate-700/50"
                   : "bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white shadow-indigo-500/25 active:scale-[0.99]"
               }`}
             >
               {isProcessing ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin flex-shrink-0" />
-                  <span className="truncate">Processing Audio & Timestamps...</span>
+                  <span className="truncate">Processing Audio &amp; Timestamps...</span>
                 </>
               ) : (
                 <>
@@ -322,20 +337,20 @@ export default function Home() {
         />
 
         {/* Feature Explainer Card */}
-        <div className="bg-slate-900/30 border border-slate-800/60 rounded-xl sm:rounded-2xl p-3 sm:p-4 flex items-center sm:items-start gap-2.5 sm:gap-3">
-          <Sparkle className="w-4 h-4 text-indigo-400 flex-shrink-0" />
+        <div className="bg-white/70 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-800/60 rounded-xl sm:rounded-2xl p-3 sm:p-4 flex items-center sm:items-start gap-2.5 sm:gap-3 shadow-sm transition-colors duration-200">
+          <Sparkle className="w-4 h-4 text-indigo-500 dark:text-indigo-400 flex-shrink-0" />
           <div className="space-y-0.5 min-w-0">
-            <h4 className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-indigo-400 truncate">
+            <h4 className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 truncate">
               Speech-to-Script Forced Alignment
             </h4>
-            <p className="text-[11px] sm:text-xs text-slate-400 leading-snug line-clamp-2">
+            <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-400 leading-snug line-clamp-2">
               AI automatically matches script cut markers with spoken words in the voiceover — zero manual timeline scrubbing.
             </p>
           </div>
         </div>
 
         {/* Footer */}
-        <footer className="text-center text-xs text-slate-500 pt-6 border-t border-slate-900">
+        <footer className="text-center text-xs text-slate-400 dark:text-slate-500 pt-6 border-t border-slate-200 dark:border-slate-900">
           <p>SyncScript • Fast Audio Timestamps for Video Creators</p>
         </footer>
       </div>

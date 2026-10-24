@@ -11,7 +11,7 @@ export interface AudioChunk {
  * Encodes an AudioBuffer slice into a standard 16-bit 16kHz mono PCM WAV File.
  * Whisper natively operates at 16,000 Hz.
  * Resampling to 16kHz mono reduces raw PCM file size by ~67% compared to 48kHz,
- * ensuring chunks always stay well below Groq's 25MB limit (~7.6MB for 4 minutes).
+ * ensuring 2-minute chunks strictly stay at ~3.8MB, safely within Vercel's 4.5MB limit.
  */
 function bufferTo16kMonoWav(
   buffer: AudioBuffer,
@@ -96,18 +96,18 @@ function bufferTo16kMonoWav(
 }
 
 /**
- * Analyzes audio and slices long files into safe 4-minute chunks (240s) at 16kHz mono.
- * Each chunk is strictly ~7.6MB, completely eliminating Groq 413 "Request Entity Too Large" errors.
+ * Analyzes audio and slices long files into safe 2-minute chunks (120s) at 16kHz mono.
+ * Each chunk is strictly ~3.8MB, completely eliminating Vercel & Groq 413 "Request Entity Too Large" errors.
  */
 export async function chunkAudioFile(
   file: File,
-  maxChunkSeconds = 240, // 4 minutes per chunk = ~7.6MB at 16kHz (well under 25MB)
+  maxChunkSeconds = 120, // 2 minutes per chunk = ~3.8MB at 16kHz (well under Vercel 4.5MB & Groq 25MB limits)
   onProgress?: (progressPercent: number, statusText: string) => void
 ): Promise<AudioChunk[]> {
   const isVideo = file.type.startsWith("video/") || file.name.endsWith(".mp4") || file.name.endsWith(".mov");
 
-  // Small compressed audio files (mp3, m4a, webm) under 18MB and under maxChunkSeconds can bypass decoding
-  if (!isVideo && file.size < 18 * 1024 * 1024) {
+  // Small compressed audio files (mp3, m4a, webm) under 4MB and under maxChunkSeconds can bypass decoding
+  if (!isVideo && file.size < 4 * 1024 * 1024) {
     const duration = await getAudioDurationFast(file);
     if (duration > 0 && duration <= maxChunkSeconds) {
       return [

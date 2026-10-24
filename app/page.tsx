@@ -59,7 +59,7 @@ export default function Home() {
       setChunkStatus("Analyzing audio file format and size...");
 
       // Step 1: Chunk Audio into safe 4-minute 16kHz slices
-      const chunks: AudioChunk[] = await chunkAudioFile(selectedFile, 240, (pct, status) => {
+      const chunks: AudioChunk[] = await chunkAudioFile(selectedFile, 120, (pct, status) => {
         setChunkProgress(Math.round(pct * 0.35));
         setChunkStatus(status);
       });
@@ -84,9 +84,26 @@ export default function Home() {
           body: formData,
         });
 
+        if (!res.ok) {
+          if (res.status === 413) {
+            throw new Error(
+              "Audio payload exceeded server limit (413 Request Entity Too Large). Please re-upload to slice with 2-minute chunks."
+            );
+          }
+          const errorText = await res.text();
+          let parsedError = "";
+          try {
+            const parsed = JSON.parse(errorText);
+            parsedError = parsed.error;
+          } catch {
+            parsedError = errorText.slice(0, 150);
+          }
+          throw new Error(parsedError || `Server error (${res.status}). Failed to transcribe audio.`);
+        }
+
         const data = await res.json();
 
-        if (!res.ok || !data.success) {
+        if (!data.success) {
           throw new Error(data.error || "Failed to transcribe audio.");
         }
 
